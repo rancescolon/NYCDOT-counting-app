@@ -5,15 +5,33 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ed352556-3de1-4333-855f-cc7b75a20d70" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/hooks/use-vehicle-input.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/export-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lib/types.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/controls-panel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/controls-panel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/export-progress-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/export-progress-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/help-sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/help-sidebar.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/pedestrian-counter-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/pedestrian-counter-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/video-controls.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-controls.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/video-overlay.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-overlay.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/video-player.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-player.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/key-mappings.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="tsconfig.json" />
+        <option value="TypeScript File" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -39,14 +57,67 @@
       </RecentBranches>
     </option>
   </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 2
+}]]></component>
+  <component name="ProjectId" id="3GdhMS3yxYlMHFirjwIy6MrHtk5" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "main",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
-    "ts.external.directory.path": "/Users/rancescolon/IdeaProjects/NYCDOT-Pedestrian-counting-app/node_modules/typescript/lib"
+    "nodejs_package_manager_path": "npm",
+    "npm.install.executor": "Run",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.grazie",
+    "ts.external.directory.path": "/Users/rancescolon/IdeaProjects/NYCDOT-counting-app/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="ReactDesignerToolWindowState">
+    <option name="myId2Visible">
+      <map>
+        <entry key="com.intellij.reactbuddy.reactComponents" value="false" />
+        <entry key="com.intellij.reactbuddy.reactInspector" value="false" />
+      </map>
+    </option>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-WS-242.23726.96" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ed352556-3de1-4333-855f-cc7b75a20d70" name="Changes" comment="" />
+      <created>1784307305623</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1784307305623</updated>
+      <workItem from="1784307307774" duration="8872000" />
+    </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
   </component>
 </project>

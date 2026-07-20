@@ -1,120 +1,95 @@
 "use client"
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import React from "react"
 import { Button } from "@/components/ui/button"
-import { Undo2, Download } from "lucide-react"
-import DirectionArrowIndicator from "./direction-arrow-indicator"
-import { getDirectionConfigForKey } from "@/lib/key-mappings"
+
+export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
+export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
+
+export interface CountEntry {
+    id: string
+    timestamp: string
+    category: VehicleCategory
+    type: VehicleType
+    videoIndex: number
+}
 
 interface ControlsPanelProps {
-  onUndo: () => void
-  onFinish: () => void
-  canUndo: boolean
-  canFinish: boolean
-  onClearVideo: () => void
-  lastPressed: { key: string; direction: string } | null
-  showArrowIndicator: boolean
-  totalCount: number
-  lastDirectionCount: number
+    lastEntry?: CountEntry
+    isDrawingMode: boolean
+    onToggleDrawingMode: () => void
+    totalCount: number
 }
 
-export default function ControlsPanel({
-  onUndo,
-  onFinish,
-  canUndo,
-  canFinish,
-  onClearVideo,
-  lastPressed,
-  showArrowIndicator,
-  totalCount,
-  lastDirectionCount,
-}: ControlsPanelProps) {
-  const lastDirectionConfig = lastPressed ? getDirectionConfigForKey(lastPressed.key) : null
+export function ControlsPanel({
+                                  lastEntry,
+                                  isDrawingMode,
+                                  onToggleDrawingMode,
+                                  totalCount
+                              }: ControlsPanelProps) {
 
-  return (
-    <div className="flex items-center gap-3 w-full max-w-3xl">
-      <div className="flex-shrink-0">
-        <DirectionArrowIndicator lastPressed={lastPressed} isVisible={showArrowIndicator} />
-      </div>
+    const formatCategory = (cat: string) => {
+        if (cat === 'cut_through') return 'Cut Through'
+        if (cat === 'parking') return 'Parking'
+        if (cat === 'driving') return 'Driving'
+        return cat
+    }
 
-      {/* Counters */}
-      <div className="flex gap-2">
-        <div className="bg-white dark:bg-slate-700 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-600 min-w-[80px] text-center">
-          <div className="text-lg font-bold tabular-nums text-slate-700 dark:text-slate-300 leading-none">
-            {totalCount}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total</div>
-        </div>
+    return (
+        <div className="flex items-center justify-end gap-6 w-full">
 
-        {lastDirectionConfig && (
-          <div
-            className={`${lastDirectionConfig.color.bg} rounded-lg px-3 py-2 border-2 ${lastDirectionConfig.color.border} min-w-[80px] text-center`}
-          >
-            <div className="text-lg font-bold tabular-nums text-white leading-none">{lastDirectionCount}</div>
-            <div className="text-xs text-white/80 mt-1">Direction</div>
-          </div>
-        )}
-      </div>
+            {/* Total Session Stats */}
+            <div className="flex flex-col items-end">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
+          Total Vehicles
+        </span>
+                <span className="text-lg font-bold text-slate-700 dark:text-slate-200">
+          {totalCount}
+        </span>
+            </div>
 
-      <div className="flex items-center gap-2 flex-1">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="flex-1 h-10 flex items-center justify-center hover:bg-secondary/80 transition-all duration-200 shadow-sm bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 font-semibold text-sm"
-          title="Undo last count (Z)"
-        >
-          <Undo2 className="h-4 w-4 mr-2 transition-transform duration-200" />
-          <span className="leading-none">Undo</span>
-        </Button>
+            {/* Vertical Divider */}
+            <div className="w-px h-10 bg-slate-300 dark:bg-slate-600 hidden sm:block"></div>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+            {/* Last Logged Feedback */}
+            <div className="flex flex-col items-start min-w-[160px]">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
+          Last Logged
+        </span>
+                <div className="h-7 flex items-center">
+                    {lastEntry ? (
+                        <span
+                            className="font-bold text-lg text-emerald-600 dark:text-emerald-400 animate-in fade-in slide-in-from-bottom-1">
+              {formatCategory(lastEntry.category)}
+                            {lastEntry.type !== 'Car' && (
+                                <span className="ml-2 text-amber-500 dark:text-amber-400 text-sm">
+                  {/* Removed parenthesis here */}
+                                    {lastEntry.type}
+                </span>
+                            )}
+            </span>
+                    ) : (
+                        <span className="text-sm text-slate-400 italic">Waiting for input...</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Drawing Mode Toggle Button */}
             <Button
-              disabled={!canFinish}
-              size="sm"
-              className="flex-1 h-10 flex items-center justify-center bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 dark:text-slate-900 transition-all duration-200 shadow-sm disabled:opacity-50 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 font-semibold text-sm"
-              title="Export counting data"
+                onClick={onToggleDrawingMode}
+                variant={isDrawingMode ? "default" : "outline"}
+                className={`min-w-[160px] font-semibold transition-all duration-200 ${
+                    isDrawingMode
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                        : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-300 dark:border-slate-600'
+                }`}
+                title="Shortcut: Hold Shift"
             >
-              <Download className="h-4 w-4 mr-2 transition-transform duration-200" />
-              <span className="leading-none">Export</span>
+                {isDrawingMode ? 'Drawing Mode: ON' : 'Drawing Mode: OFF'}
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="animate-in fade-in-0 zoom-in-95 duration-300">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Export Data & Finish?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will export your counting data as a CSV file (grouped by 15-second intervals) and clear the video.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="hover:scale-105 hover:shadow-md transition-all duration-200">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  onFinish()
-                  onClearVideo()
-                }}
-                className="bg-green-600 hover:bg-green-700 hover:scale-105 hover:shadow-lg transition-all duration-200"
-              >
-                Yes, Finish & Export
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </div>
-  )
+
+        </div>
+    )
 }
+
+export default ControlsPanel

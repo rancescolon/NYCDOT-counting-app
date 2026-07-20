@@ -5,29 +5,19 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { UploadCloud, RotateCcw, AlertTriangle, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import VideoOverlay from "./video-overlay"
-
-interface Intersection {
-  id: string
-  x: number
-  y: number
-  label: string
-}
 
 interface VideoPlayerProps {
   videoSrc: string | null
   onVideoSelect: (src: string | null) => void
   onPlay: () => void
   onPause: () => void
-  lastPressed: { key: string; direction: string } | null
-  onIntersectionsSet: (intersections: Intersection[]) => void
   onTimeUpdate: () => void
   onLoadedMetadata: () => void
 }
 
 const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
     (
-        { videoSrc, onVideoSelect, onPlay, onPause, lastPressed, onIntersectionsSet, onTimeUpdate, onLoadedMetadata },
+        { videoSrc, onVideoSelect, onPlay, onPause, onTimeUpdate, onLoadedMetadata },
         ref,
     ) => {
       const [isDragging, setIsDragging] = useState(false)
@@ -42,12 +32,12 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
       React.useEffect(() => {
         if (videoSrc) {
           try {
-            const savedData = localStorage.getItem("pedestrian-counter-data")
+            const savedData = localStorage.getItem("vehicle-counter-data")
             if (savedData) {
               const parsedData = JSON.parse(savedData)
               if (
                   parsedData.videoSrc === videoSrc &&
-                  (parsedData.log?.length > 0 || parsedData.intersections?.length > 0)
+                  (parsedData.entries?.length > 0 || parsedData.strokes?.length > 0)
               ) {
                 setShowRestoreNotification(true)
                 setTimeout(() => setShowRestoreNotification(false), 10000)
@@ -66,12 +56,10 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
       const validateVideoFormat = useCallback((file: File): boolean => {
         const supportedTypes = ["video/mp4", "video/webm", "video/ogg"]
 
-        // Check MIME type first
         if (supportedTypes.includes(file.type)) {
           return true
         }
 
-        // Check file extension as fallback
         const extension = file.name.toLowerCase().split(".").pop()
         const supportedExtensions = ["mp4", "webm", "ogg"]
 
@@ -84,7 +72,6 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
             setShowFormatInfo(false)
 
             if (file && file.type.startsWith("video/")) {
-              // Check if it's an AVI file
               if (isAviFile(file)) {
                 setVideoError(
                     "AVI files are not supported in this environment. Please convert your AVI file to MP4 using a tool like VLC Media Player, HandBrake, or an online converter, then upload the MP4 file.",
@@ -93,7 +80,6 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                 return
               }
 
-              // Validate format for other video types
               if (!validateVideoFormat(file)) {
                 setVideoError(
                     `Unsupported video format: ${file.name}. Please use MP4, WebM, or OGG format. For best compatibility, we recommend MP4.`,
@@ -104,18 +90,13 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
 
               const url = URL.createObjectURL(file)
 
-              // Clear any existing saved data before setting new video
               try {
-                localStorage.removeItem("pedestrian-counter-data")
+                localStorage.removeItem("vehicle-counter-data")
               } catch (error) {
                 console.error("Error clearing saved data:", error)
               }
 
               onVideoSelect(url)
-              setTimeout(() => {
-                const labelButton = document.querySelector("[data-label-intersections]") as HTMLButtonElement
-                labelButton?.click()
-              }, 100)
             }
           },
           [onVideoSelect, validateVideoFormat, isAviFile],
@@ -160,7 +141,6 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
           (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0]
             if (file) handleFileSelect(file)
-            // Reset the input value so the same file can be selected again
             e.target.value = ""
           },
           [handleFileSelect],
@@ -168,7 +148,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
 
       const clearSavedData = useCallback(() => {
         try {
-          localStorage.removeItem("pedestrian-counter-data")
+          localStorage.removeItem("vehicle-counter-data")
           setShowRestoreNotification(false)
           window.location.reload()
         } catch (error) {
@@ -199,7 +179,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                       <div className="flex-1">
                         <h4 className="text-sm font-semibold text-blue-800 mb-1">Previous Session Restored</h4>
                         <p className="text-xs text-blue-700 mb-3">
-                          Your counting data and intersections have been automatically restored from your last session.
+                          Your counting data and lines have been automatically restored from your last session.
                         </p>
                         <div className="flex gap-2">
                           <Button
@@ -258,7 +238,9 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                         <p className="text-lg font-semibold mb-3 leading-tight text-red-700 dark:text-red-300">
                           Video Format Issue
                         </p>
-                        <p className="text-sm mb-6 leading-relaxed max-w-md text-red-600 dark:text-red-400">{videoError}</p>
+                        <p className="text-sm mb-6 leading-relaxed max-w-md text-red-600 dark:text-red-400">
+                          {videoError}
+                        </p>
 
                         {showFormatInfo && (
                             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg max-w-md">
@@ -269,18 +251,10 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                                     How to Convert AVI to MP4:
                                   </h4>
                                   <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                                    <li>
-                                      • <strong>VLC Media Player:</strong> Media → Convert/Save → Add file → Convert
-                                    </li>
-                                    <li>
-                                      • <strong>HandBrake:</strong> Free, open-source video converter
-                                    </li>
-                                    <li>
-                                      • <strong>Online:</strong> CloudConvert, Online-Convert, or similar
-                                    </li>
-                                    <li>
-                                      • <strong>Windows:</strong> Use built-in Photos app or Movies & TV
-                                    </li>
+                                    <li>• <strong>VLC Media Player:</strong> Media → Convert/Save → Add file → Convert</li>
+                                    <li>• <strong>HandBrake:</strong> Free, open-source video converter</li>
+                                    <li>• <strong>Online:</strong> CloudConvert, Online-Convert, or similar</li>
+                                    <li>• <strong>Windows:</strong> Use built-in Photos app or Movies & TV</li>
                                   </ul>
                                 </div>
                               </div>
@@ -321,18 +295,10 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                             onTimeUpdate={onTimeUpdate}
                             onLoadedMetadata={onLoadedMetadata}
                         />
-                        <VideoOverlay
-                            videoRef={internalRef}
-                            isVideoLoaded={!!videoSrc}
-                            lastPressed={lastPressed}
-                            onIntersectionsSet={onIntersectionsSet}
-                        />
                       </div>
                   ) : (
-                      <div
-                          className="text-center text-muted-foreground p-8 select-none flex flex-col items-center justify-center w-full h-full">
-                        <UploadCloud
-                            className="h-16 w-16 text-slate-400 mb-4 transition-transform duration-300 hover:scale-110"/>
+                      <div className="text-center text-muted-foreground p-8 select-none flex flex-col items-center justify-center w-full h-full">
+                        <UploadCloud className="h-16 w-16 text-slate-400 mb-4 transition-transform duration-300 hover:scale-110" />
                         <p className="text-lg font-semibold mb-2 leading-tight">Drag & drop video here</p>
                         <p className="text-sm mb-4 leading-tight">or click anywhere to select a file</p>
 
@@ -341,18 +307,15 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                             <strong>Supported formats:</strong>
                           </p>
                           <div className="flex flex-wrap gap-3 justify-center">
-   <span
-      className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-4 py-2.5 rounded text-base font-semibold">
-      MP4
-    </span>
-    <span
-      className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2.5 rounded text-base font-semibold">
-      WebM
-    </span>
-    <span
-      className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-4 py-2.5 rounded text-base font-semibold">
-      OGG
-    </span>
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-4 py-2.5 rounded text-base font-semibold">
+                        MP4
+                      </span>
+                            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2.5 rounded text-base font-semibold">
+                        WebM
+                      </span>
+                            <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-4 py-2.5 rounded text-base font-semibold">
+                        OGG
+                      </span>
                           </div>
 
                           <div
@@ -362,7 +325,6 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                               onDragOver={(e) => e.stopPropagation()}
                               onDrop={(e) => e.stopPropagation()}
                           >
-
                             <button
                                 onClick={(e) => {
                                   e.stopPropagation()
