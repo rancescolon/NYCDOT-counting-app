@@ -5,20 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ed352556-3de1-4333-855f-cc7b75a20d70" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/nextjs.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/nextjs.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/categorizer/page.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/controls-panel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/controls-panel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/help-sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/help-sidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/pedestrian-counter-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/pedestrian-counter-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/vehicleCategorizer.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/video-controls.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-controls.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/video-end-prompt.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-end-prompt.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/video-overlay.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-overlay.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/video-restore-prompt.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-restore-prompt.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/video-time-input-dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/video-time-input-dialog.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/use-vehicle-input.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/use-vehicle-input.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

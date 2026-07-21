@@ -19,7 +19,6 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
   const [isDrawing, setIsDrawing] = useState(false)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
 
-  // Keep canvas internal resolution perfectly synced with CSS dimensions
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -29,7 +28,7 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
         const { width, height } = entry.contentRect
         canvas.width = width
         canvas.height = height
-        setCanvasSize({ width, height }) // Trigger re-render to redraw strokes on new size
+        setCanvasSize({ width, height })
       }
     })
 
@@ -37,48 +36,45 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Render all lines (triggers on draw or on resize)
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Clear frame
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Style settings
     ctx.lineWidth = 4
     ctx.strokeStyle = "#FF262D"
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
 
-    // Draw saved strokes
-    strokes.forEach(stroke => drawLine(ctx, stroke.points))
+    // Pass the width and height into the draw function to scale the percentages
+    strokes.forEach(stroke => drawLine(ctx, stroke.points, canvas.width, canvas.height))
 
-    // Draw current active stroke
     if (currentPoints.length > 0) {
-      drawLine(ctx, currentPoints)
+      drawLine(ctx, currentPoints, canvas.width, canvas.height)
     }
   }, [strokes, currentPoints, canvasSize])
 
-  const drawLine = (ctx: CanvasRenderingContext2D, points: {x: number, y: number}[]) => {
+  // FIX: Multiply the normalized percentages (0-1) by the actual canvas dimensions
+  const drawLine = (ctx: CanvasRenderingContext2D, points: {x: number, y: number}[], width: number, height: number) => {
     if (points.length < 2) return
     ctx.beginPath()
-    ctx.moveTo(points[0].x, points[0].y)
-    points.forEach(p => ctx.lineTo(p.x, p.y))
+    ctx.moveTo(points[0].x * width, points[0].y * height)
+    points.forEach(p => ctx.lineTo(p.x * width, p.y * height))
     ctx.stroke()
   }
 
-  // Calculate true mouse position regardless of CSS scaling
+  // FIX: Store coordinates as percentages of the canvas size rather than absolute pixels
   const getMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
 
     const rect = canvas.getBoundingClientRect()
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height
     }
   }
 

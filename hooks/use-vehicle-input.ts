@@ -13,18 +13,23 @@ export function useVehicleInput(
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if typing in an input
             if (
                 e.target instanceof HTMLInputElement ||
                 e.target instanceof HTMLTextAreaElement ||
                 (e.target as Element)?.closest("[contenteditable]")
             ) return;
 
-            const key = e.key.toLowerCase();
+            let key = e.key.toLowerCase();
+            const code = e.code.toLowerCase();
+
+            // FIX: Normalize Numpad keys (e.g., "numpad1" becomes "1")
+            if (code.startsWith("numpad") && !isNaN(Number(code.slice(6)))) {
+                key = code.replace("numpad", "");
+            }
+
             const targetKeys = ['1', '2', '3', 'm', 'e', 'b', 't', 'z', 'shift'];
 
             if (targetKeys.includes(key)) {
-                // Only prevent default for our specific app hotkeys
                 if (key !== 'shift') e.preventDefault();
                 setPressedKeys((prev) => new Set(prev).add(key));
             }
@@ -48,7 +53,7 @@ export function useVehicleInput(
                 currentPressed.add(key);
 
                 let activeModifiers = 0;
-                let selectedType: VehicleType = 'Car'; // Default
+                let selectedType: VehicleType = 'Car';
 
                 if (currentPressed.has('m')) { activeModifiers++; selectedType = 'Moto'; }
                 if (currentPressed.has('e') || currentPressed.has('b')) { activeModifiers++; selectedType = 'Ebike'; }
@@ -63,7 +68,13 @@ export function useVehicleInput(
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
-            const key = e.key.toLowerCase();
+            let key = e.key.toLowerCase();
+            const code = e.code.toLowerCase();
+
+            if (code.startsWith("numpad") && !isNaN(Number(code.slice(6)))) {
+                key = code.replace("numpad", "");
+            }
+
             setPressedKeys((prev) => {
                 const newSet = new Set(prev);
                 newSet.delete(key);
