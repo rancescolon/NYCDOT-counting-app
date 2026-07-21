@@ -64,9 +64,9 @@ export default function ExportProgressModal({
               <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                 {status === "processing" ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500"/>
                 ) : (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 text-green-500"/>
                 )}
                 Processing {totalEntries} logged vehicles
               </span>
@@ -75,15 +75,16 @@ export default function ExportProgressModal({
               <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                 {status === "complete" ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 text-green-500"/>
                 ) : status === "formatting" ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500"/>
                 ) : (
-                    <div className="h-4 w-4" />
+                    <div className="h-4 w-4"/>
                 )}
-                Generating Master CSV File
+                Generating Excel Workbook (.xlsx)
               </span>
               </div>
+
             </div>
           </div>
         </DialogContent>

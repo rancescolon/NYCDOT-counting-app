@@ -10,6 +10,7 @@ import VideoTimeInputDialog from "@/components/video-time-input-dialog"
 import VideoEndPrompt from "@/components/video-end-prompt"
 import { VideoOverlay } from "@/components/video-overlay"
 import { useVehicleInput } from "@/hooks/use-vehicle-input"
+import * as XLSX from "xlsx-js-style"
 
 // --- Data Models ---
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
@@ -330,40 +331,115 @@ export default function PedestrianCounterPage() {
 
     try {
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
-      let csvContent = "Timestamp,Cut Through,Parking,Driving\n"
 
+      const cutThroughCol: string[] = []
+      const parkingCol: string[] = []
+      const sidewalkCol: string[] = []
+      // notesCol is now a sparse array aligned with the row indices
+      const notesCol: string[] = []
+
+      // Distribute the entries top-down into their specific columns
       entries.forEach((entry) => {
-        const typeModifier = entry.type === 'Car' ? 'Car' : entry.type
+        let rowIndex = 0
 
         if (entry.category === 'cut_through') {
-          csvContent += `${entry.timestamp},${typeModifier},,\n`
-        } else if (entry.category === 'parking') {
-          csvContent += `${entry.timestamp},,${typeModifier},\n`
-        } else if (entry.category === 'driving') {
-          csvContent += `${entry.timestamp},,,${typeModifier}\n`
+          cutThroughCol.push(entry.timestamp)
+          rowIndex = cutThroughCol.length - 1
+
+          if (entry.type !== 'Car') {
+            const note = `A${rowIndex + 2}: ${entry.type}`
+            // Append to existing notes on this row if multiple categories have modifiers here
+            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
+          }
+        }
+        else if (entry.category === 'parking') {
+          parkingCol.push(entry.timestamp)
+          rowIndex = parkingCol.length - 1
+
+          if (entry.type !== 'Car') {
+            const note = `B${rowIndex + 2}: ${entry.type}`
+            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
+          }
+        }
+        else if (entry.category === 'driving') {
+          sidewalkCol.push(entry.timestamp)
+          rowIndex = sidewalkCol.length - 1
+
+          if (entry.type !== 'Car') {
+            const note = `C${rowIndex + 2}: ${entry.type}`
+            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
+          }
         }
       })
 
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-      const link = document.createElement("a")
-      const url = URL.createObjectURL(blob)
+      const maxRows = Math.max(
+          cutThroughCol.length,
+          parkingCol.length,
+          sidewalkCol.length,
+          notesCol.length
+      )
 
-      link.setAttribute("href", url)
-      link.setAttribute("download", `vehicle_counts_${timestamp}.csv`)
-      link.style.visibility = "hidden"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      const excelData = []
+      for (let i = 0; i < maxRows; i++) {
+        excelData.push({
+          "Cut Through": cutThroughCol[i] || "",
+          "Sidewalk Parking": parkingCol[i] || "",
+          "Sidewalk Driving": sidewalkCol[i] || "",
+          "Notes": notesCol[i] || "" // Empty cells allowed here as requested
+        })
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData)
+
+      // Increased the Notes column width slightly in case multiple notes land on the same row
+      worksheet['!cols'] = [
+        { wch: 15 }, // A: Cut Through
+        { wch: 18 }, // B: Sidewalk Parking
+        { wch: 18 }, // C: Sidewalk Driving
+        { wch: 30 }  // D: Notes
+      ]
+
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:D1")
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C })
+
+          if (!worksheet[cellAddress]) continue
+
+          worksheet[cellAddress].s = {
+            font: { name: "Calibri", sz: 11 },
+            alignment: { vertical: "center", horizontal: "left" }
+          }
+
+          if (R === 0) {
+            worksheet[cellAddress].s.font.bold = true
+            worksheet[cellAddress].s.fill = { fgColor: { rgb: "E2EFDA" } }
+            worksheet[cellAddress].s.border = { bottom: { style: "medium", color: { rgb: "000000" } } }
+          }
+          else {
+            if (R % 2 === 0) {
+              worksheet[cellAddress].s.fill = { fgColor: { rgb: "F2F2F2" } }
+            } else {
+              worksheet[cellAddress].s.fill = { fgColor: { rgb: "FFFFFF" } }
+            }
+          }
+        }
+      }
+
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Vehicle Counts")
+
+      XLSX.writeFile(workbook, `vehicle_counts_${timestamp}.xlsx`)
 
       handleClearVideo()
     } catch (error) {
-      console.error("Failed to export CSV:", error)
+      console.error("Failed to export Excel file:", error)
     }
 
     setIsExporting(false)
     setShowExportModal(false)
   }, [entries, handleClearVideo])
+
 
   if (!isDataLoaded) {
     return (

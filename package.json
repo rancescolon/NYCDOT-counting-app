@@ -57,7 +57,8 @@
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "vaul": "latest"
+    "vaul": "latest",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@types/node": "^22",
