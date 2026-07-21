@@ -57,6 +57,9 @@ export default function PedestrianCounterPage() {
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [isDrawingMode, setIsDrawingMode] = useState(false)
 
+  // Queue State for Multi-Video Drag & Drop
+  const [videoQueue, setVideoQueue] = useState<File[]>([])
+
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
@@ -115,8 +118,8 @@ export default function PedestrianCounterPage() {
     setStrokes([])
   }, [])
 
-  // Hook relies on exactly 4 arguments now.
-  useVehicleInput(handleLog, handleUndoVehicle, handleUndoStroke, isDrawingMode)
+  // Hook provides the actively held modifier key for sidebar clicks
+  const { activeModifierType } = useVehicleInput(handleLog, handleUndoVehicle, handleUndoStroke, isDrawingMode)
 
   const saveToStorage = useCallback(() => {
     try {
@@ -151,7 +154,6 @@ export default function PedestrianCounterPage() {
           return false
         }
 
-        // FIX: Always prompt restore if there's data, regardless of the video URL state
         if (parsedData.entries?.length > 0 || parsedData.strokes?.length > 0) {
           setSavedStateForRestore(parsedData)
           setShowVideoRestorePrompt(true)
@@ -159,8 +161,6 @@ export default function PedestrianCounterPage() {
 
         setEntries(parsedData.entries || [])
         setStrokes(parsedData.strokes || [])
-
-        // FIX: Wipe blob URLs on refresh so it doesn't crash the video player
         setVideoSrc(null)
 
         setPlaybackRate(parsedData.playbackRate || 1)
@@ -202,16 +202,42 @@ export default function PedestrianCounterPage() {
     }
   }, [saveToStorage, isDataLoaded])
 
+  // Queue Handling: Plays next video automatically without clearing drawings or prompting timestamp
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
+
     const handleVideoEnd = () => {
-      setIsPlaying(false)
-      setShowVideoEndPrompt(true)
+      if (videoQueue.length > 0) {
+        const nextFile = videoQueue[0]
+        const remainingFiles = videoQueue.slice(1)
+
+        if (recordingStartTime && videoRef.current) {
+          const nextStart = new Date(recordingStartTime.getTime() + videoRef.current.duration * 1000)
+          setRecordingStartTime(nextStart)
+        }
+
+        setVideoSrc(URL.createObjectURL(nextFile))
+        setVideoQueue(remainingFiles)
+        setCurrentVideoIndex(prev => prev + 1)
+        setVideoCount(prev => prev + 1)
+
+        setTimeout(() => setIsPlaying(true), 200)
+      } else {
+        setIsPlaying(false)
+        setShowVideoEndPrompt(true)
+      }
     }
+
     video.addEventListener("ended", handleVideoEnd)
     return () => video.removeEventListener("ended", handleVideoEnd)
-  }, [videoSrc])
+  }, [videoSrc, videoQueue, recordingStartTime])
+
+  useEffect(() => {
+    if (isPlaying && videoRef.current && videoSrc) {
+      videoRef.current.play().catch(e => console.error("Auto-play prevented", e))
+    }
+  }, [videoSrc, isPlaying])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -223,14 +249,12 @@ export default function PedestrianCounterPage() {
 
       const key = event.key.toLowerCase()
 
-      // FIX: Toggle Sidebar explicitly with '?' or '/'
       if (key === "?" || key === "/") {
         event.preventDefault()
         setShowHelpSidebar((prev) => !prev)
         return
       }
 
-      // FIX: Pressing Shift directly toggles drawing mode (ignores held key repeats)
       if (key === "shift" && !event.repeat) {
         event.preventDefault()
         setIsDrawingMode((prev) => !prev)
@@ -247,7 +271,6 @@ export default function PedestrianCounterPage() {
         changePlaybackRate(Math.max(0.25, playbackRate - 0.25))
       } else if (key === "arrowright" && videoSrc) {
         event.preventDefault()
-        // FIX: Uncapped speed up (can go above 4x)
         changePlaybackRate(playbackRate + 0.25)
       }
     }
@@ -263,7 +286,6 @@ export default function PedestrianCounterPage() {
 
   const changePlaybackRate = useCallback((rate: number) => {
     if (!videoRef.current) return
-    // FIX: Uncapped max speed (HTML5 video maximum is 16)
     const newRate = Math.max(0.25, Math.min(16, rate))
     videoRef.current.playbackRate = newRate
     setPlaybackRate(newRate)
@@ -271,6 +293,7 @@ export default function PedestrianCounterPage() {
 
   const handleClearVideo = useCallback(() => {
     setVideoSrc(null)
+    setVideoQueue([])
     setEntries([])
     setStrokes([])
     setIsPlaying(false)
@@ -284,32 +307,24 @@ export default function PedestrianCounterPage() {
     clearStorage()
   }, [clearStorage])
 
-  const handleVideoSelect = useCallback((src: string | null) => {
-    if (currentVideoIndex >= 0 && (strokes.length > 0 || recordingStartTime)) {
-      setVideoMetadata((prev) => ({
-        ...prev,
-        [currentVideoIndex]: { recordingStartTime, strokes: [...strokes] },
-      }))
-    }
+  const handleFilesSelect = useCallback((files: File[]) => {
+    if (files.length === 0) return
 
-    setVideoSrc(src)
+    const firstFile = files[0]
+    const restOfQueue = files.slice(1)
 
-    if (src) {
-      const existingMetadata = videoMetadata[currentVideoIndex]
-      if (existingMetadata) {
-        setStrokes(existingMetadata.strokes)
-        setRecordingStartTime(existingMetadata.recordingStartTime)
-      } else {
-        setStrokes([])
-        setRecordingStartTime(null)
-        setShowTimeInputDialog(true)
-      }
-      setIsPlaying(false)
-      setPlaybackRate(1)
-      setCurrentTime(0)
-      setDuration(0)
-    }
-  }, [currentVideoIndex, strokes, recordingStartTime, videoMetadata])
+    setVideoSrc(URL.createObjectURL(firstFile))
+    setVideoQueue(restOfQueue)
+
+    setStrokes([])
+    setRecordingStartTime(null)
+    setShowTimeInputDialog(true)
+    setIsPlaying(false)
+    setPlaybackRate(1)
+    setCurrentTime(0)
+    setDuration(0)
+    setCurrentVideoIndex(0)
+  }, [])
 
   const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime)
@@ -335,11 +350,12 @@ export default function PedestrianCounterPage() {
       const cutThroughCol: string[] = []
       const parkingCol: string[] = []
       const sidewalkCol: string[] = []
-      // notesCol is now a sparse array aligned with the row indices
       const notesCol: string[] = []
 
-      // Distribute the entries top-down into their specific columns
-      entries.forEach((entry) => {
+      // FIX: Sort chronologically to address sorting bugs when scrubbing backwards
+      const sortedEntries = [...entries].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+
+      sortedEntries.forEach((entry) => {
         let rowIndex = 0
 
         if (entry.category === 'cut_through') {
@@ -348,7 +364,6 @@ export default function PedestrianCounterPage() {
 
           if (entry.type !== 'Car') {
             const note = `A${rowIndex + 2}: ${entry.type}`
-            // Append to existing notes on this row if multiple categories have modifiers here
             notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
           }
         }
@@ -385,18 +400,17 @@ export default function PedestrianCounterPage() {
           "Cut Through": cutThroughCol[i] || "",
           "Sidewalk Parking": parkingCol[i] || "",
           "Sidewalk Driving": sidewalkCol[i] || "",
-          "Notes": notesCol[i] || "" // Empty cells allowed here as requested
+          "Notes": notesCol[i] || ""
         })
       }
 
       const worksheet = XLSX.utils.json_to_sheet(excelData)
 
-      // Increased the Notes column width slightly in case multiple notes land on the same row
       worksheet['!cols'] = [
-        { wch: 15 }, // A: Cut Through
-        { wch: 18 }, // B: Sidewalk Parking
-        { wch: 18 }, // C: Sidewalk Driving
-        { wch: 30 }  // D: Notes
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 30 }
       ]
 
       const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:D1")
@@ -460,7 +474,7 @@ export default function PedestrianCounterPage() {
             <VideoPlayer
                 ref={videoRef}
                 videoSrc={videoSrc}
-                onVideoSelect={handleVideoSelect}
+                onFilesSelect={handleFilesSelect}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}
@@ -502,6 +516,10 @@ export default function PedestrianCounterPage() {
                 isDrawingMode={isDrawingMode}
                 onToggleDrawingMode={() => setIsDrawingMode(!isDrawingMode)}
                 onClearStrokes={handleClearStrokes}
+                onExport={() => {
+                  setIsExporting(true)
+                  setShowExportModal(true)
+                }}
             />
           </div>
         </main>
@@ -522,6 +540,10 @@ export default function PedestrianCounterPage() {
             isOpen={showVideoEndPrompt}
             onUploadNew={() => {
               setShowVideoEndPrompt(false)
+              setEntries([])
+              setStrokes([])
+              setRecordingStartTime(null)
+
               setCurrentVideoIndex(videoCount)
               setVideoCount(v => v + 1)
               document.getElementById("video-upload-hidden")?.click()
@@ -553,6 +575,7 @@ export default function PedestrianCounterPage() {
             onUndo={handleUndoVehicle}
             canUndo={entries.length > 0}
             onLog={handleLog}
+            activeModifierType={activeModifierType}
         />
 
         {showVideoRestorePrompt && savedStateForRestore && (
@@ -581,11 +604,12 @@ export default function PedestrianCounterPage() {
         <input
             type="file"
             id="video-upload-hidden"
+            multiple
             accept="video/mp4, video/webm, video/ogg"
             style={{display: "none"}}
             onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) handleVideoSelect(URL.createObjectURL(file))
+              const files = Array.from(e.target.files || [])
+              if (files.length > 0) handleFilesSelect(files)
               e.target.value = ""
             }}
         />

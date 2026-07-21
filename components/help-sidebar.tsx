@@ -13,6 +13,7 @@ interface HelpSidebarProps {
     onUndo: () => void
     canUndo: boolean
     onLog?: (category: VehicleCategory, type: VehicleType) => void
+    activeModifierType: VehicleType
 }
 
 const keyboardShortcuts = [
@@ -68,7 +69,8 @@ export default function HelpSidebar({
                                         onClose,
                                         onUndo,
                                         canUndo = false,
-                                        onLog
+                                        onLog,
+                                        activeModifierType
                                     }: HelpSidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -154,9 +156,9 @@ export default function HelpSidebar({
                                                 key={index}
                                                 onClick={() => {
                                                     if (isClickable && onLog) {
-                                                        if (shortcut.keys[0] === "1") onLog("cut_through", "Car")
-                                                        if (shortcut.keys[0] === "2") onLog("parking", "Car")
-                                                        if (shortcut.keys[0] === "3") onLog("driving", "Car")
+                                                        if (shortcut.keys[0] === "1") onLog("cut_through", activeModifierType)
+                                                        if (shortcut.keys[0] === "2") onLog("parking", activeModifierType)
+                                                        if (shortcut.keys[0] === "3") onLog("driving", activeModifierType)
                                                     }
                                                 }}
                                                 className={`flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200 ${
@@ -186,9 +188,9 @@ export default function HelpSidebar({
                                 <div className="mt-6 bg-gray-100 dark:bg-blue-900/20 border border-blue-700 dark:border-blue-800 rounded-lg p-4 mb-4">
                                     <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 text-sm">Quick Tips</h4>
                                     <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
-                                        <li>• Press <strong>1, 2, or 3</strong> to log a Car.</li>
+                                        <li>• Press <strong>1, 2, or 3</strong> to log a vehicle (incorporates any held modifier).</li>
                                         <li>• Hold <strong>M, E/B, or T</strong> to change the vehicle type.</li>
-                                        <li>• Hold <strong>Shift</strong> to draw restricted zones.</li>
+                                        <li>• Press <strong>Shift</strong> to toggle drawing restricted zones.</li>
                                         <li>• Press <strong>Z</strong> to undo the last logged vehicle.</li>
                                         <li>• Press <strong>Shift + Z</strong> to undo the last drawn line.</li>
                                     </ul>

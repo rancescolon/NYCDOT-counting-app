@@ -11,6 +11,18 @@ export function useVehicleInput(
 ) {
     const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
 
+    // Determine the active modifier based on currently held keys
+    const getActiveType = (): VehicleType => {
+        let activeModifiers = 0;
+        let selectedType: VehicleType = 'Car';
+
+        if (pressedKeys.has('m')) { activeModifiers++; selectedType = 'Moto'; }
+        if (pressedKeys.has('e') || pressedKeys.has('b')) { activeModifiers++; selectedType = 'Ebike'; }
+        if (pressedKeys.has('t')) { activeModifiers++; selectedType = 'Truck'; }
+
+        return activeModifiers > 1 ? 'Car' : selectedType;
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (
@@ -22,7 +34,6 @@ export function useVehicleInput(
             let key = e.key.toLowerCase();
             const code = e.code.toLowerCase();
 
-            // FIX: Normalize Numpad keys (e.g., "numpad1" becomes "1")
             if (code.startsWith("numpad") && !isNaN(Number(code.slice(6)))) {
                 key = code.replace("numpad", "");
             }
@@ -90,4 +101,7 @@ export function useVehicleInput(
             window.removeEventListener('keyup', handleKeyUp);
         };
     }, [pressedKeys, isDrawingMode, onLog, onUndoVehicle, onUndoStroke]);
+
+    // Export the actively held modifier
+    return { activeModifierType: getActiveType() };
 }

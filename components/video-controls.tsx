@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Play, Pause, Rewind, FastForward, HelpCircle } from "lucide-react"
+import { Play, Pause, Rewind, FastForward, HelpCircle, SkipBack, Download } from "lucide-react"
 import { ControlsPanel } from "./controls-panel"
 
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
@@ -37,7 +37,8 @@ interface VideoControlsProps {
     lastEntry?: CountEntry
     isDrawingMode: boolean
     onToggleDrawingMode: () => void
-    onClearStrokes: () => void // Added Clear Canvas Prop
+    onClearStrokes: () => void
+    onExport: () => void
 }
 
 export default function VideoControls({
@@ -59,7 +60,7 @@ export default function VideoControls({
                                           lastEntry,
                                           isDrawingMode,
                                           onToggleDrawingMode,
-                                          onClearStrokes, // Added Clear Canvas Prop
+                                          onClearStrokes,
                                       }: VideoControlsProps) {
     const [isScrubbing, setIsScrubbing] = useState(false)
     const scrubBarRef = useRef<HTMLDivElement>(null)
@@ -71,7 +72,6 @@ export default function VideoControls({
     }
 
     const handleSpeedUp = () => {
-        // Uncapped the speed up to 16x (HTML5 maximum)
         const newRate = Math.min(16, playbackRate + 0.25)
         onChangePlaybackRate(newRate)
     }
@@ -163,6 +163,18 @@ export default function VideoControls({
 
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1">
+                        {/* Skip Back 5s Button */}
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => onSeek(Math.max(0, currentTime - 5))}
+                            disabled={!isVideoLoaded}
+                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
+                            title="Back 5s"
+                        >
+                            <SkipBack className="h-5 w-5 transition-transform duration-200"/>
+                        </Button>
+
                         <Button
                             variant="outline"
                             size="icon"
@@ -171,7 +183,7 @@ export default function VideoControls({
                             className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
                             title="Slow down (←)"
                         >
-                            <Rewind className="h-5 w-5 transition-transform duration-200" />
+                            <Rewind className="h-5 w-5 transition-transform duration-200"/>
                         </Button>
 
                         <Button
@@ -183,34 +195,44 @@ export default function VideoControls({
                         >
                             {isPlaying ? (
                                 <>
-                                    <Pause className="h-5 w-5 mr-3 transition-transform duration-200" />
+                                    <Pause className="h-5 w-5 mr-3 transition-transform duration-200"/>
                                     <span className="leading-none">Pause</span>
                                 </>
                             ) : (
                                 <>
-                                    <Play className="h-5 w-5 mr-3 transition-transform duration-200" />
+                                    <Play className="h-5 w-5 mr-3 transition-transform duration-200"/>
                                     <span className="leading-none">Play</span>
                                 </>
                             )}
                         </Button>
 
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handleSpeedUp}
-                            // Removed the 4x cap here as well
-                            disabled={!isVideoLoaded || playbackRate >= 16}
-                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
-                            title="Speed up (→)"
-                        >
-                            <FastForward className="h-5 w-5 transition-transform duration-200" />
-                        </Button>
-
-                        <div className="min-w-[120px] text-center bg-white dark:bg-slate-700 rounded-lg px-3 py-3 border border-slate-200 dark:border-slate-600 transition-all duration-200 hover:shadow-md">
-                            <div className="text-sm font-bold tabular-nums text-slate-700 dark:text-slate-300 leading-none">
-                                {playbackRate.toFixed(2)}x
+                        <div
+                            className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm h-12 px-4 gap-3">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[50px] text-center">
+                {playbackRate.toFixed(2)}x
+              </span>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onChangePlaybackRate(Math.max(0.25, playbackRate - 0.25))}
+                                    disabled={!isVideoLoaded}
+                                    className="h-7 px-2 text-xs font-bold"
+                                    title="Slow down"
+                                >
+                                    -
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onChangePlaybackRate(playbackRate + 0.25)}
+                                    disabled={!isVideoLoaded}
+                                    className="h-7 px-2 text-xs font-bold"
+                                    title="Speed up"
+                                >
+                                    +
+                                </Button>
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Speed</div>
                         </div>
 
                         <Button
@@ -222,7 +244,7 @@ export default function VideoControls({
                             className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg"
                             title="Help (?)"
                         >
-                            <HelpCircle className="h-5 w-5 transition-transform duration-200" />
+                            <HelpCircle className="h-5 w-5 transition-transform duration-200"/>
                         </Button>
                     </div>
 
@@ -231,7 +253,8 @@ export default function VideoControls({
                             lastEntry={lastEntry}
                             isDrawingMode={isDrawingMode}
                             onToggleDrawingMode={onToggleDrawingMode}
-                            onClearStrokes={onClearStrokes} // Passed down to ControlsPanel
+                            onClearStrokes={onClearStrokes}
+                            onExport={onFinish}
                             totalCount={totalCount}
                         />
                     </div>
