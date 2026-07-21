@@ -18,7 +18,7 @@ interface HelpSidebarProps {
 const keyboardShortcuts = [
     {
         keys: ["1"],
-        description: "Mark Cut Through",
+        description: "Mark Sidewalk Cut Through",
         color: "bg-blue-500",
     },
     {
@@ -28,7 +28,7 @@ const keyboardShortcuts = [
     },
     {
         keys: ["3"],
-        description: "Mark Driving",
+        description: "Mark Sidewalk Driving",
         color: "bg-amber-500",
     },
     {
@@ -47,7 +47,7 @@ const keyboardShortcuts = [
         color: "bg-purple-500",
     },
     {
-        keys: ["Hold Shift"],
+        keys: ["Shift"],
         description: "Drawing Mode",
         color: "bg-red-500",
     },
@@ -183,7 +183,7 @@ export default function HelpSidebar({
                                     })}
                                 </div>
 
-                                <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                                <div className="mt-6 bg-gray-100 dark:bg-blue-900/20 border border-blue-700 dark:border-blue-800 rounded-lg p-4 mb-4">
                                     <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 text-sm">Quick Tips</h4>
                                     <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
                                         <li>• Press <strong>1, 2, or 3</strong> to log a Car.</li>

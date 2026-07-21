@@ -73,15 +73,15 @@ export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip }: Vide
               Recording Date
             </Label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="pl-10"
-                placeholder="Select date"
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="border rounded-md p-2 bg-white text-black dark:bg-black dark:text-white"
+                  placeholder="Select date"
               />
+
             </div>
           </div>
 
@@ -90,13 +90,12 @@ export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip }: Vide
               Recording Time
             </Label>
             <div className="relative">
-              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="time"
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="pl-10"
+                className="border rounded-md p-2 bg-white text-black dark:bg-black dark:text-white"
                 placeholder="Select time"
               />
             </div>
@@ -104,12 +103,7 @@ export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip }: Vide
 
           {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">{error}</div>}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-            <p className="text-xs text-blue-700">
-              <strong>Example:</strong> If your video was recorded at 2:30 PM on March 15th, 2024, and you count a
-              pedestrian at 0:45 in the video, the CSV will show the event at 3:15 PM.
-            </p>
-          </div>
+
         </div>
 
         <div className="flex gap-3">

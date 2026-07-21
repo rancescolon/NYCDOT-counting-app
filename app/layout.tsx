@@ -19,24 +19,13 @@ export default function RootLayout({
       <body>
         <header className="bg-gray-800 text-white p-4 flex justify-between items-center">
           <Link href="/" className="text-xl font-bold">
-            Pedestrian Counter
+            DOT Counting App
           </Link>
           <nav>
             <ul className="flex space-x-4">
-              <li>
-                <Link href="/" className="hover:underline">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/counter" className="hover:underline">
-                  Counter
-                </Link>
-              </li><li>
-                <Link href="/categorizer" className="hover:underline">
-                  categorizer
-                </Link>
-              </li>
+              <Link href="/counter" className="hover:underline">
+                Curb cut
+              </Link>
 
             </ul>
           </nav>

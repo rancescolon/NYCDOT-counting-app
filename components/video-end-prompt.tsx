@@ -44,7 +44,7 @@ export default function VideoEndPrompt({
 
           <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-300">Total pedestrians counted:</span>
+              <span className="text-gray-600 dark:text-gray-300">Total Vehicles counted:</span>
               <span className="font-medium text-gray-800 dark:text-white">{totalCounts}</span>
             </div>
             <div className="flex justify-between text-sm">

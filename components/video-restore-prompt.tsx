@@ -237,12 +237,7 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
                     <Users className="h-4 w-4 text-green-500" />
                     <span className="font-medium text-gray-900 dark:text-white">{savedData.totalCounts} counts</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-purple-500" />
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {savedData.intersectionCount}/4 intersections
-                    </span>
-                  </div>
+
                 </div>
                 <span className="text-gray-500 dark:text-gray-400">{formatLastSaved(savedData.lastSaved)}</span>
               </div>
@@ -334,24 +329,13 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
                 />
               </div>
 
-              <div className="mt-6 flex items-center justify-between">
-                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Keyboard className="h-3 w-3" />
-                    <span>Shortcuts:</span>
-                  </div>
-                  <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">U</kbd>
-                  <span>Upload</span>
-                  <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">N</kbd>
-                  <span>New session</span>
-                  <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">Esc</kbd>
-                  <span>Close</span>
-                </div>
+              <div className="flex justify-center pt-4 ">
+
 
                 <Button
                   variant="outline"
                   onClick={onDismiss}
-                  className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-blue-500 bg-transparent"
+                  className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-blue-500 bg-transparent center"
                 >
                   Start New Session
                 </Button>

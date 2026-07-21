@@ -49,7 +49,7 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
 
     // Style settings
     ctx.lineWidth = 4
-    ctx.strokeStyle = "#ef4444" // Tailwind red-500
+    ctx.strokeStyle = "#FF262D"
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
 

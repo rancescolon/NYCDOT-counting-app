@@ -18,6 +18,7 @@ interface ControlsPanelProps {
     lastEntry?: CountEntry
     isDrawingMode: boolean
     onToggleDrawingMode: () => void
+    onClearStrokes: () => void
     totalCount: number
 }
 
@@ -25,6 +26,7 @@ export function ControlsPanel({
                                   lastEntry,
                                   isDrawingMode,
                                   onToggleDrawingMode,
+                                  onClearStrokes,
                                   totalCount
                               }: ControlsPanelProps) {
 
@@ -74,19 +76,33 @@ export function ControlsPanel({
                 </div>
             </div>
 
-            {/* Drawing Mode Toggle Button */}
-            <Button
-                onClick={onToggleDrawingMode}
-                variant={isDrawingMode ? "default" : "outline"}
-                className={`min-w-[160px] font-semibold transition-all duration-200 ${
-                    isDrawingMode
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                        : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-300 dark:border-slate-600'
-                }`}
-                title="Shortcut: Hold Shift"
-            >
-                {isDrawingMode ? 'Drawing Mode: ON' : 'Drawing Mode: OFF'}
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+                {/* Clear Canvas Button (Only shows in Drawing Mode) */}
+                {isDrawingMode && (
+                    <Button
+                        onClick={onClearStrokes}
+                        variant="destructive"
+                        className="font-semibold shadow-md animate-in fade-in"
+                    >
+                        Clear Canvas
+                    </Button>
+                )}
+
+                {/* Drawing Mode Toggle Button */}
+                <Button
+                    onClick={onToggleDrawingMode}
+                    variant={isDrawingMode ? "default" : "outline"}
+                    className={`min-w-[160px] font-semibold transition-all duration-200 ${
+                        isDrawingMode
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                            : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border-slate-300 dark:border-slate-600'
+                    }`}
+                    title="Shortcut: Shift"
+                >
+                    {isDrawingMode ? 'Drawing Mode: ON' : 'Drawing Mode: OFF'}
+                </Button>
+            </div>
 
         </div>
     )

@@ -8,8 +8,8 @@ import HelpSidebar from "@/components/help-sidebar"
 import VideoRestorePrompt from "@/components/video-restore-prompt"
 import VideoTimeInputDialog from "@/components/video-time-input-dialog"
 import VideoEndPrompt from "@/components/video-end-prompt"
-import { VideoOverlay } from "@/components/video-overlay" // New Canvas Component
-import { useVehicleInput } from "@/hooks/use-vehicle-input" // New Input Hook
+import { VideoOverlay } from "@/components/video-overlay"
+import { useVehicleInput } from "@/hooks/use-vehicle-input"
 
 // --- Data Models ---
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
@@ -17,7 +17,7 @@ export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
 
 export interface CountEntry {
   id: string
-  timestamp: string // Formatted time
+  timestamp: string
   category: VehicleCategory
   type: VehicleType
   videoIndex: number
@@ -30,7 +30,7 @@ export interface Stroke {
 
 interface VideoMetadata {
   recordingStartTime: Date | null
-  strokes: Stroke[] // Saving drawn lines per video instead of intersections
+  strokes: Stroke[]
 }
 
 interface SavedState {
@@ -52,42 +52,16 @@ const STORAGE_KEY = "vehicle-counter-data"
 const AUTO_SAVE_INTERVAL = 5000
 
 export default function PedestrianCounterPage() {
-  // Core Tracking State
   const [entries, setEntries] = useState<CountEntry[]>([])
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [isDrawingMode, setIsDrawingMode] = useState(false)
 
-  const [isShiftHeld, setIsShiftHeld] = useState(false)
-
-  // Tracks if the Shift key is physically held down
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') setIsShiftHeld(true)
-    }
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') setIsShiftHeld(false)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
-  }, [])
-
-  // The true drawing mode is active if the button is toggled ON, OR if Shift is held down
-  const activeDrawingMode = isDrawingMode || isShiftHeld
-
-
-
-  // Video & Playback State
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
 
-  // UI & Metadata State
   const [showExportModal, setShowExportModal] = useState(false)
   const [showHelpSidebar, setShowHelpSidebar] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -105,9 +79,7 @@ export default function PedestrianCounterPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // --- Handlers for Vehicle Hook ---
   const formatCurrentTimestamp = () => {
-    // Falls back to local clock if no video start time is present
     if (recordingStartTime && videoRef.current) {
       const actualTime = new Date(recordingStartTime.getTime() + videoRef.current.currentTime * 1000)
       return actualTime.toTimeString().split(' ')[0]
@@ -138,10 +110,13 @@ export default function PedestrianCounterPage() {
     setStrokes((prev) => [...prev, stroke])
   }, [])
 
-  // Initialize Keybind Interceptor Hook
-  useVehicleInput(handleLog, handleUndoVehicle, handleUndoStroke, activeDrawingMode)
+  const handleClearStrokes = useCallback(() => {
+    setStrokes([])
+  }, [])
 
-  // --- Storage Functions ---
+  // Hook relies on exactly 4 arguments now.
+  useVehicleInput(handleLog, handleUndoVehicle, handleUndoStroke, isDrawingMode)
+
   const saveToStorage = useCallback(() => {
     try {
       const dataToSave: SavedState = {
@@ -175,14 +150,18 @@ export default function PedestrianCounterPage() {
           return false
         }
 
-        if (parsedData.videoSrc && (parsedData.entries?.length > 0 || parsedData.strokes?.length > 0)) {
+        // FIX: Always prompt restore if there's data, regardless of the video URL state
+        if (parsedData.entries?.length > 0 || parsedData.strokes?.length > 0) {
           setSavedStateForRestore(parsedData)
           setShowVideoRestorePrompt(true)
         }
 
         setEntries(parsedData.entries || [])
         setStrokes(parsedData.strokes || [])
-        setVideoSrc(parsedData.videoSrc || null)
+
+        // FIX: Wipe blob URLs on refresh so it doesn't crash the video player
+        setVideoSrc(null)
+
         setPlaybackRate(parsedData.playbackRate || 1)
         setCurrentTime(parsedData.currentTime || 0)
         setDuration(parsedData.duration || 0)
@@ -208,7 +187,6 @@ export default function PedestrianCounterPage() {
     }
   }, [])
 
-  // --- Lifecycles & Video Handlers ---
   useEffect(() => {
     loadFromStorage()
     setIsDataLoaded(true)
@@ -234,10 +212,8 @@ export default function PedestrianCounterPage() {
     return () => video.removeEventListener("ended", handleVideoEnd)
   }, [videoSrc])
 
-  // Native video playback keyboard controls (Space, Arrows)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignore if typing in an input
       if (
           event.target instanceof HTMLInputElement ||
           event.target instanceof HTMLTextAreaElement ||
@@ -246,14 +222,20 @@ export default function PedestrianCounterPage() {
 
       const key = event.key.toLowerCase()
 
-      // Explicitly catch ? (often Shift + /) to open sidebar
-      if (key === "?" || (event.shiftKey && event.key === "/")) {
+      // FIX: Toggle Sidebar explicitly with '?' or '/'
+      if (key === "?" || key === "/") {
         event.preventDefault()
         setShowHelpSidebar((prev) => !prev)
         return
       }
 
-      // Ignore playback controls if drawing mode is active
+      // FIX: Pressing Shift directly toggles drawing mode (ignores held key repeats)
+      if (key === "shift" && !event.repeat) {
+        event.preventDefault()
+        setIsDrawingMode((prev) => !prev)
+        return
+      }
+
       if (isDrawingMode) return
 
       if (key === " " && videoSrc) {
@@ -264,13 +246,13 @@ export default function PedestrianCounterPage() {
         changePlaybackRate(Math.max(0.25, playbackRate - 0.25))
       } else if (key === "arrowright" && videoSrc) {
         event.preventDefault()
-        changePlaybackRate(Math.min(4, playbackRate + 0.25))
+        // FIX: Uncapped speed up (can go above 4x)
+        changePlaybackRate(playbackRate + 0.25)
       }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [videoSrc, playbackRate, isDrawingMode])
-
 
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return
@@ -280,7 +262,8 @@ export default function PedestrianCounterPage() {
 
   const changePlaybackRate = useCallback((rate: number) => {
     if (!videoRef.current) return
-    const newRate = Math.max(0.25, Math.min(4, rate))
+    // FIX: Uncapped max speed (HTML5 video maximum is 16)
+    const newRate = Math.max(0.25, Math.min(16, rate))
     videoRef.current.playbackRate = newRate
     setPlaybackRate(newRate)
   }, [])
@@ -338,7 +321,6 @@ export default function PedestrianCounterPage() {
     }
   }, [])
 
-  // --- Custom Export Formatting ---
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
       setIsExporting(false)
@@ -348,11 +330,9 @@ export default function PedestrianCounterPage() {
 
     try {
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
-
       let csvContent = "Timestamp,Cut Through,Parking,Driving\n"
 
       entries.forEach((entry) => {
-        // Removed the parenthesis formatting here for the CSV
         const typeModifier = entry.type === 'Car' ? 'Car' : entry.type
 
         if (entry.category === 'cut_through') {
@@ -384,7 +364,6 @@ export default function PedestrianCounterPage() {
     setIsExporting(false)
     setShowExportModal(false)
   }, [entries, handleClearVideo])
-
 
   if (!isDataLoaded) {
     return (
@@ -424,7 +403,6 @@ export default function PedestrianCounterPage() {
           </div>
 
           <div className="flex-shrink-0 mt-2">
-            {/* Note: Update the internal props of VideoControls to match this new structure */}
             <VideoControls
                 isPlaying={isPlaying}
                 playbackRate={playbackRate}
@@ -437,18 +415,17 @@ export default function PedestrianCounterPage() {
                 currentTime={currentTime}
                 duration={duration}
                 onSeek={handleSeek}
-                onShowHelp={() => setShowHelpSidebar(true)}
+                onShowHelp={() => setShowHelpSidebar((prev) => !prev)}
                 onFinish={() => {
                   setIsExporting(true)
                   setShowExportModal(true)
                 }}
                 onClearVideo={handleClearVideo}
-
-                // New Video Control Props passed down to replace the old ones
                 totalCount={entries.length}
                 lastEntry={lastEntry}
                 isDrawingMode={isDrawingMode}
                 onToggleDrawingMode={() => setIsDrawingMode(!isDrawingMode)}
+                onClearStrokes={handleClearStrokes}
             />
           </div>
         </main>
@@ -491,7 +468,7 @@ export default function PedestrianCounterPage() {
             isOpen={showExportModal}
             onComplete={handleExportComplete}
             totalEntries={entries.length}
-            groupedEntries={3} // Repurposed for 3 distinct CSVs
+            groupedEntries={3}
         />
 
         <HelpSidebar
@@ -501,6 +478,7 @@ export default function PedestrianCounterPage() {
             canUndo={entries.length > 0}
             onLog={handleLog}
         />
+
         {showVideoRestorePrompt && savedStateForRestore && (
             <VideoRestorePrompt
                 isOpen={showVideoRestorePrompt}
@@ -518,7 +496,7 @@ export default function PedestrianCounterPage() {
                   currentTime: savedStateForRestore.currentTime,
                   duration: savedStateForRestore.duration,
                   totalCounts: savedStateForRestore.entries.length,
-                  intersectionCount: 0, // Obsolete
+                  intersectionCount: 0,
                   lastSaved: savedStateForRestore.lastSaved,
                 }}
             />
