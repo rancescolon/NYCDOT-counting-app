@@ -10,6 +10,7 @@ import VideoTimeInputDialog from "@/components/video-time-input-dialog"
 import VideoEndPrompt from "@/components/video-end-prompt"
 import { VideoOverlay } from "@/components/video-overlay"
 import { useVehicleInput } from "@/hooks/use-vehicle-input"
+import { Button } from "@/components/ui/button"
 import * as XLSX from "xlsx-js-style"
 
 // --- Data Models ---
@@ -22,6 +23,7 @@ export interface CountEntry {
   category: VehicleCategory
   type: VehicleType
   videoIndex: number
+  note?: string
 }
 
 export interface Stroke {
@@ -55,16 +57,22 @@ const AUTO_SAVE_INTERVAL = 5000
 export default function PedestrianCounterPage() {
   const [entries, setEntries] = useState<CountEntry[]>([])
   const [strokes, setStrokes] = useState<Stroke[]>([])
+
+  // Redo States
+  const [redoEntries, setRedoEntries] = useState<CountEntry[]>([])
+  const [redoStrokes, setRedoStrokes] = useState<Stroke[]>([])
+
   const [isDrawingMode, setIsDrawingMode] = useState(false)
-
-  // Queue State for Multi-Video Drag & Drop
   const [videoQueue, setVideoQueue] = useState<File[]>([])
-
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+
+  // Note Modal States
+  const [showNotesModal, setShowNotesModal] = useState(false)
+  const [pendingNote, setPendingNote] = useState("")
 
   const [showExportModal, setShowExportModal] = useState(false)
   const [showHelpSidebar, setShowHelpSidebar] = useState(false)
@@ -82,59 +90,150 @@ export default function PedestrianCounterPage() {
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const wasPlayingRef = useRef(false)
 
-  const formatCurrentTimestamp = () => {
+  const formatCurrentTimestamp = useCallback(() => {
     if (recordingStartTime && videoRef.current) {
       const actualTime = new Date(recordingStartTime.getTime() + videoRef.current.currentTime * 1000)
       return actualTime.toTimeString().split(' ')[0]
     }
     return new Date().toTimeString().split(' ')[0]
-  }
+  }, [recordingStartTime])
 
-  const handleLog = useCallback((category: VehicleCategory, type: VehicleType) => {
+  const handleRetroactiveN = useCallback(() => {
+    if (entries.length === 0) return;
+    if (videoRef.current) {
+      wasPlayingRef.current = !videoRef.current.paused;
+      videoRef.current.pause();
+    }
+    setIsPlaying(false);
+    setShowNotesModal(true);
+  }, [entries.length])
+
+  const closeNotesModal = useCallback(() => {
+    setShowNotesModal(false);
+    setPendingNote("");
+    if (wasPlayingRef.current && videoRef.current) {
+      videoRef.current.play().catch(e => console.error("Playback prevented", e));
+      setIsPlaying(true);
+    }
+  }, []);
+
+  const handleLog = useCallback((category: VehicleCategory, type: VehicleType, hasQ: boolean = false, hasN: boolean = false) => {
     if (!videoSrc) return
     setEntries((prev) => [...prev, {
       id: Date.now().toString(),
       timestamp: formatCurrentTimestamp(),
       category,
       type,
-      videoIndex: currentVideoIndex
+      videoIndex: currentVideoIndex,
+      note: hasQ ? '?' : undefined
     }])
-  }, [videoSrc, currentVideoIndex, recordingStartTime])
+
+    setRedoEntries([]) // Clear redo stack on new action
+
+    if (hasN) {
+      handleRetroactiveN()
+    }
+  }, [videoSrc, currentVideoIndex, formatCurrentTimestamp, handleRetroactiveN])
 
   const handleUndoVehicle = useCallback(() => {
-    setEntries((prev) => prev.slice(0, -1))
+    setEntries((prev) => {
+      if (prev.length === 0) return prev
+      const last = prev[prev.length - 1]
+      setRedoEntries(r => [...r, last])
+      return prev.slice(0, -1)
+    })
+  }, [])
+
+  const handleRedoVehicle = useCallback(() => {
+    setRedoEntries((prev) => {
+      if (prev.length === 0) return prev
+      const last = prev[prev.length - 1]
+      setEntries(e => [...e, last])
+      return prev.slice(0, -1)
+    })
   }, [])
 
   const handleUndoStroke = useCallback(() => {
-    setStrokes((prev) => prev.slice(0, -1))
+    setStrokes((prev) => {
+      if (prev.length === 0) return prev
+      const last = prev[prev.length - 1]
+      setRedoStrokes(r => [...r, last])
+      return prev.slice(0, -1)
+    })
+  }, [])
+
+  const handleRedoStroke = useCallback(() => {
+    setRedoStrokes((prev) => {
+      if (prev.length === 0) return prev
+      const last = prev[prev.length - 1]
+      setStrokes(s => [...s, last])
+      return prev.slice(0, -1)
+    })
   }, [])
 
   const handleAddStroke = useCallback((stroke: Stroke) => {
     setStrokes((prev) => [...prev, stroke])
+    setRedoStrokes([])
   }, [])
 
   const handleClearStrokes = useCallback(() => {
     setStrokes([])
+    setRedoStrokes([])
   }, [])
 
-  // Hook provides the actively held modifier key for sidebar clicks
-  const { activeModifierType } = useVehicleInput(handleLog, handleUndoVehicle, handleUndoStroke, isDrawingMode)
+  const handleRetroactiveQ = useCallback(() => {
+    setEntries(prev => {
+      if (prev.length === 0) return prev;
+      const newEntries = [...prev];
+      const last = { ...newEntries[newEntries.length - 1] };
+
+      // FIX: Only append the question mark if it doesn't already exist
+      if (!last.note?.includes('?')) {
+        last.note = last.note ? `${last.note} ?` : `?`;
+      }
+
+      newEntries[newEntries.length - 1] = last;
+      return newEntries;
+    });
+  }, [])
+
+  const handleSaveNote = useCallback((noteText: string) => {
+    setEntries(prev => {
+      if (prev.length === 0) return prev;
+      const newEntries = [...prev];
+      const last = { ...newEntries[newEntries.length - 1] };
+      if (last.note) {
+        last.note = noteText ? `${last.note} | ${noteText}` : last.note;
+      } else {
+        last.note = noteText || '?';
+      }
+      newEntries[newEntries.length - 1] = last;
+      return newEntries;
+    });
+    closeNotesModal();
+  }, [closeNotesModal])
+
+  const { activeModifierType } = useVehicleInput(
+      handleLog,
+      handleUndoVehicle,
+      handleRedoVehicle,
+      handleUndoStroke,
+      handleRedoStroke,
+      handleRetroactiveQ,
+      handleRetroactiveN,
+      isDrawingMode
+  )
 
   const saveToStorage = useCallback(() => {
     try {
       const dataToSave: SavedState = {
-        entries,
-        strokes,
-        videoSrc,
-        playbackRate,
+        entries, strokes, videoSrc, playbackRate,
         currentTime: videoRef.current?.currentTime || currentTime,
-        duration,
-        lastSaved: Date.now(),
+        duration, lastSaved: Date.now(),
         recordingStartTime: recordingStartTime?.toISOString(),
-        videoCount,
-        currentVideoIndex,
-        videoMetadata,
+        videoCount, currentVideoIndex, videoMetadata,
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
     } catch (error) {
@@ -170,7 +269,6 @@ export default function PedestrianCounterPage() {
         setVideoCount(parsedData.videoCount || 1)
         setCurrentVideoIndex(parsedData.currentVideoIndex || 0)
         setVideoMetadata(parsedData.videoMetadata || {})
-
         return true
       }
     } catch (error) {
@@ -202,7 +300,6 @@ export default function PedestrianCounterPage() {
     }
   }, [saveToStorage, isDataLoaded])
 
-  // Queue Handling: Plays next video automatically without clearing drawings or prompting timestamp
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -221,7 +318,6 @@ export default function PedestrianCounterPage() {
         setVideoQueue(remainingFiles)
         setCurrentVideoIndex(prev => prev + 1)
         setVideoCount(prev => prev + 1)
-
         setTimeout(() => setIsPlaying(true), 200)
       } else {
         setIsPlaying(false)
@@ -239,7 +335,6 @@ export default function PedestrianCounterPage() {
     }
   }, [videoSrc, isPlaying])
 
-  // --- MOVED THESE FUNCTIONS UP ---
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return
     if (videoRef.current.paused) videoRef.current.play()
@@ -259,25 +354,22 @@ export default function PedestrianCounterPage() {
       setCurrentTime(time)
     }
   }, [])
-  // --------------------------------
 
-  // --- MOVED THIS USEEFFECT DOWN SO IT CAN SEE THE FUNCTIONS ABOVE ---
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
           event.target instanceof HTMLInputElement ||
           event.target instanceof HTMLTextAreaElement ||
-          (event.target as Element)?.closest("[contenteditable]")
+          (event.target as Element)?.closest("[contenteditable]") ||
+          showNotesModal
       ) return
 
       const key = event.key.toLowerCase()
-
       if (key === "?" || key === "/") {
         event.preventDefault()
         setShowHelpSidebar((prev) => !prev)
         return
       }
-
       if (key === "shift" && !event.repeat) {
         event.preventDefault()
         setIsDrawingMode((prev) => !prev)
@@ -289,42 +381,31 @@ export default function PedestrianCounterPage() {
       if (key === " " && videoSrc) {
         event.preventDefault()
         togglePlay()
-      }
-      // Left Arrow: Scrub back 5 seconds
-      else if (key === "arrowleft" && videoSrc) {
+      } else if (key === "arrowleft" && videoSrc) {
         event.preventDefault()
-        if (videoRef.current) {
-          handleSeek(Math.max(0, videoRef.current.currentTime - 5))
-        }
-      }
-      // Right Arrow: Scrub forward 5 seconds
-      else if (key === "arrowright" && videoSrc) {
+        if (videoRef.current) handleSeek(Math.max(0, videoRef.current.currentTime - 5))
+      } else if (key === "arrowright" && videoSrc) {
         event.preventDefault()
-        if (videoRef.current) {
-          handleSeek(Math.min(duration, videoRef.current.currentTime + 5))
-        }
-      }
-      // Down Arrow: Slow down playback
-      else if (key === "arrowdown" && videoSrc) {
+        if (videoRef.current) handleSeek(Math.min(duration, videoRef.current.currentTime + 5))
+      } else if (key === "arrowdown" && videoSrc) {
         event.preventDefault()
         changePlaybackRate(Math.max(0.25, playbackRate - 0.25))
-      }
-      // Up Arrow: Speed up playback
-      else if (key === "arrowup" && videoSrc) {
+      } else if (key === "arrowup" && videoSrc) {
         event.preventDefault()
         changePlaybackRate(playbackRate + 0.25)
       }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [videoSrc, playbackRate, isDrawingMode, duration, handleSeek, changePlaybackRate, togglePlay])
-  // ------------------------------------------------------------------
+  }, [videoSrc, playbackRate, isDrawingMode, duration, handleSeek, changePlaybackRate, togglePlay, showNotesModal])
 
   const handleClearVideo = useCallback(() => {
     setVideoSrc(null)
     setVideoQueue([])
     setEntries([])
+    setRedoEntries([])
     setStrokes([])
+    setRedoStrokes([])
     setIsPlaying(false)
     setPlaybackRate(1)
     setCurrentTime(0)
@@ -338,13 +419,11 @@ export default function PedestrianCounterPage() {
 
   const handleFilesSelect = useCallback((files: File[]) => {
     if (files.length === 0) return
-
     const firstFile = files[0]
     const restOfQueue = files.slice(1)
 
     setVideoSrc(URL.createObjectURL(firstFile))
     setVideoQueue(restOfQueue)
-
     setStrokes([])
     setRecordingStartTime(null)
     setShowTimeInputDialog(true)
@@ -374,7 +453,6 @@ export default function PedestrianCounterPage() {
       const sidewalkCol: string[] = []
       const notesCol: string[] = []
 
-      // FIX: Sort chronologically to address sorting bugs when scrubbing backwards
       const sortedEntries = [...entries].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
 
       sortedEntries.forEach((entry) => {
@@ -384,38 +462,38 @@ export default function PedestrianCounterPage() {
           cutThroughCol.push(entry.timestamp)
           rowIndex = cutThroughCol.length - 1
 
-          if (entry.type !== 'Car') {
-            const note = `A${rowIndex + 2}: ${entry.type}`
-            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
+          let baseNote = entry.type !== 'Car' ? entry.type : ""
+          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note;
+          if (baseNote) {
+            const noteStr = `A${rowIndex + 2}: ${baseNote}`
+            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
           }
         }
         else if (entry.category === 'parking') {
           parkingCol.push(entry.timestamp)
           rowIndex = parkingCol.length - 1
 
-          if (entry.type !== 'Car') {
-            const note = `B${rowIndex + 2}: ${entry.type}`
-            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
+          let baseNote = entry.type !== 'Car' ? entry.type : ""
+          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note;
+          if (baseNote) {
+            const noteStr = `B${rowIndex + 2}: ${baseNote}`
+            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
           }
         }
         else if (entry.category === 'driving') {
           sidewalkCol.push(entry.timestamp)
           rowIndex = sidewalkCol.length - 1
 
-          if (entry.type !== 'Car') {
-            const note = `C${rowIndex + 2}: ${entry.type}`
-            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${note}` : note
+          let baseNote = entry.type !== 'Car' ? entry.type : ""
+          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note;
+          if (baseNote) {
+            const noteStr = `C${rowIndex + 2}: ${baseNote}`
+            notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
           }
         }
       })
 
-      const maxRows = Math.max(
-          cutThroughCol.length,
-          parkingCol.length,
-          sidewalkCol.length,
-          notesCol.length
-      )
-
+      const maxRows = Math.max(cutThroughCol.length, parkingCol.length, sidewalkCol.length, notesCol.length)
       const excelData = []
       for (let i = 0; i < maxRows; i++) {
         excelData.push({
@@ -427,55 +505,35 @@ export default function PedestrianCounterPage() {
       }
 
       const worksheet = XLSX.utils.json_to_sheet(excelData)
-
-      worksheet['!cols'] = [
-        { wch: 15 },
-        { wch: 18 },
-        { wch: 18 },
-        { wch: 30 }
-      ]
+      worksheet['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 30 }]
 
       const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:D1")
       for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
           const cellAddress = XLSX.utils.encode_cell({ r: R, c: C })
-
           if (!worksheet[cellAddress]) continue
-
-          worksheet[cellAddress].s = {
-            font: { name: "Calibri", sz: 11 },
-            alignment: { vertical: "center", horizontal: "left" }
-          }
-
+          worksheet[cellAddress].s = { font: { name: "Calibri", sz: 11 }, alignment: { vertical: "center", horizontal: "left" } }
           if (R === 0) {
             worksheet[cellAddress].s.font.bold = true
             worksheet[cellAddress].s.fill = { fgColor: { rgb: "E2EFDA" } }
             worksheet[cellAddress].s.border = { bottom: { style: "medium", color: { rgb: "000000" } } }
-          }
-          else {
-            if (R % 2 === 0) {
-              worksheet[cellAddress].s.fill = { fgColor: { rgb: "F2F2F2" } }
-            } else {
-              worksheet[cellAddress].s.fill = { fgColor: { rgb: "FFFFFF" } }
-            }
+          } else {
+            worksheet[cellAddress].s.fill = { fgColor: { rgb: (R % 2 === 0) ? "F2F2F2" : "FFFFFF" } }
           }
         }
       }
 
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, "Vehicle Counts")
-
       XLSX.writeFile(workbook, `vehicle_counts_${timestamp}.xlsx`)
 
       handleClearVideo()
     } catch (error) {
       console.error("Failed to export Excel file:", error)
     }
-
     setIsExporting(false)
     setShowExportModal(false)
   }, [entries, handleClearVideo])
-
 
   if (!isDataLoaded) {
     return (
@@ -492,7 +550,12 @@ export default function PedestrianCounterPage() {
         <main
             className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${showHelpSidebar ? "pr-84" : ""}`}>
 
-          <div className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black">
+          <div
+              className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer"
+              onClick={(e) => {
+                if (!isDrawingMode) togglePlay()
+              }}
+          >
             <VideoPlayer
                 ref={videoRef}
                 videoSrc={videoSrc}
@@ -546,6 +609,30 @@ export default function PedestrianCounterPage() {
           </div>
         </main>
 
+        {showNotesModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-96 border border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Add Note to Last Entry</h3>
+                <input
+                    type="text"
+                    autoFocus
+                    placeholder="Type a note..."
+                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded mb-4 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                    value={pendingNote}
+                    onChange={e => setPendingNote(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSaveNote(pendingNote);
+                      if (e.key === 'Escape') closeNotesModal();
+                    }}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={closeNotesModal}>Cancel</Button>
+                  <Button onClick={() => handleSaveNote(pendingNote)} className="bg-blue-600 text-white hover:bg-blue-700">Save Note</Button>
+                </div>
+              </div>
+            </div>
+        )}
+
         <VideoTimeInputDialog
             isOpen={showTimeInputDialog}
             onConfirm={(startTime) => {
@@ -564,8 +651,9 @@ export default function PedestrianCounterPage() {
               setShowVideoEndPrompt(false)
               setEntries([])
               setStrokes([])
+              setRedoEntries([])
+              setRedoStrokes([])
               setRecordingStartTime(null)
-
               setCurrentVideoIndex(videoCount)
               setVideoCount(v => v + 1)
               document.getElementById("video-upload-hidden")?.click()

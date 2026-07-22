@@ -295,7 +295,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                                     <video
                                         ref={internalRef}
                                         src={videoSrc}
-                                        className="w-full h-full object-contain rounded-md"
+                                        className="w-full h-full object-contain bg-black"
                                         onPlay={onPlay}
                                         onPause={onPause}
                                         onError={handleVideoError}

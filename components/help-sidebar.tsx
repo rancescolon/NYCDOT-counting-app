@@ -30,7 +30,7 @@ const keyboardShortcuts = [
     {
         keys: ["3"],
         description: "Mark Sidewalk Driving",
-        color: "bg-amber-500",
+        color: "bg-amber-400",
     },
     {
         keys: ["Hold M"],
@@ -61,6 +61,23 @@ const keyboardShortcuts = [
         keys: ["?"],
         description: "Toggle this help menu",
         color: "bg-gray-800",
+    },
+
+    {
+        keys: ["R"],
+        description: "Redo an undo",
+        color: "bg-yellow-800", // change color
+    },
+    {
+        keys: ["Hold Q"],
+        description: "Questionable Modifier",
+        color: "bg-purple-500",
+    },
+
+    {
+        keys: ["N"],
+        description: "Add a note",
+        color: "bg-red-500",
     },
 ]
 

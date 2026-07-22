@@ -16,6 +16,7 @@ export interface CountEntry {
     category: VehicleCategory
     type: VehicleType
     videoIndex: number
+    note?: string
 }
 
 interface VideoControlsProps {
