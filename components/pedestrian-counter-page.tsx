@@ -239,6 +239,29 @@ export default function PedestrianCounterPage() {
     }
   }, [videoSrc, isPlaying])
 
+  // --- MOVED THESE FUNCTIONS UP ---
+  const togglePlay = useCallback(() => {
+    if (!videoRef.current) return
+    if (videoRef.current.paused) videoRef.current.play()
+    else videoRef.current.pause()
+  }, [])
+
+  const changePlaybackRate = useCallback((rate: number) => {
+    if (!videoRef.current) return
+    const newRate = Math.max(0.25, Math.min(16, rate))
+    videoRef.current.playbackRate = newRate
+    setPlaybackRate(newRate)
+  }, [])
+
+  const handleSeek = useCallback((time: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = time
+      setCurrentTime(time)
+    }
+  }, [])
+  // --------------------------------
+
+  // --- MOVED THIS USEEFFECT DOWN SO IT CAN SEE THE FUNCTIONS ABOVE ---
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -266,30 +289,36 @@ export default function PedestrianCounterPage() {
       if (key === " " && videoSrc) {
         event.preventDefault()
         togglePlay()
-      } else if (key === "arrowleft" && videoSrc) {
+      }
+      // Left Arrow: Scrub back 5 seconds
+      else if (key === "arrowleft" && videoSrc) {
+        event.preventDefault()
+        if (videoRef.current) {
+          handleSeek(Math.max(0, videoRef.current.currentTime - 5))
+        }
+      }
+      // Right Arrow: Scrub forward 5 seconds
+      else if (key === "arrowright" && videoSrc) {
+        event.preventDefault()
+        if (videoRef.current) {
+          handleSeek(Math.min(duration, videoRef.current.currentTime + 5))
+        }
+      }
+      // Down Arrow: Slow down playback
+      else if (key === "arrowdown" && videoSrc) {
         event.preventDefault()
         changePlaybackRate(Math.max(0.25, playbackRate - 0.25))
-      } else if (key === "arrowright" && videoSrc) {
+      }
+      // Up Arrow: Speed up playback
+      else if (key === "arrowup" && videoSrc) {
         event.preventDefault()
         changePlaybackRate(playbackRate + 0.25)
       }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [videoSrc, playbackRate, isDrawingMode])
-
-  const togglePlay = useCallback(() => {
-    if (!videoRef.current) return
-    if (videoRef.current.paused) videoRef.current.play()
-    else videoRef.current.pause()
-  }, [])
-
-  const changePlaybackRate = useCallback((rate: number) => {
-    if (!videoRef.current) return
-    const newRate = Math.max(0.25, Math.min(16, rate))
-    videoRef.current.playbackRate = newRate
-    setPlaybackRate(newRate)
-  }, [])
+  }, [videoSrc, playbackRate, isDrawingMode, duration, handleSeek, changePlaybackRate, togglePlay])
+  // ------------------------------------------------------------------
 
   const handleClearVideo = useCallback(() => {
     setVideoSrc(null)
@@ -328,13 +357,6 @@ export default function PedestrianCounterPage() {
 
   const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) setCurrentTime(videoRef.current.currentTime)
-  }, [])
-
-  const handleSeek = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time
-      setCurrentTime(time)
-    }
   }, [])
 
   const handleExportComplete = useCallback(() => {

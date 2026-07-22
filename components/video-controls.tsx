@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Play, Pause, Rewind, FastForward, HelpCircle, SkipBack, Download } from "lucide-react"
+import { Play, Pause, HelpCircle, Undo2 } from "lucide-react"
 import { ControlsPanel } from "./controls-panel"
 
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
@@ -48,10 +48,8 @@ export default function VideoControls({
                                           onChangePlaybackRate,
                                           isVideoLoaded,
                                           onUndo,
-                                          onFinish,
-                                          onClearVideo,
                                           canUndo,
-                                          canFinish,
+                                          onFinish,
                                           currentTime,
                                           duration,
                                           onSeek,
@@ -65,16 +63,6 @@ export default function VideoControls({
     const [isScrubbing, setIsScrubbing] = useState(false)
     const scrubBarRef = useRef<HTMLDivElement>(null)
     const helpButtonRef = useRef<HTMLButtonElement>(null)
-
-    const handleSlowDown = () => {
-        const newRate = Math.max(0.25, playbackRate - 0.25)
-        onChangePlaybackRate(newRate)
-    }
-
-    const handleSpeedUp = () => {
-        const newRate = Math.min(16, playbackRate + 0.25)
-        onChangePlaybackRate(newRate)
-    }
 
     const formatTime = (timeInSeconds: number) => {
         if (isNaN(timeInSeconds) || timeInSeconds < 0) return "00:00"
@@ -163,28 +151,6 @@ export default function VideoControls({
 
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1">
-                        {/* Skip Back 5s Button */}
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => onSeek(Math.max(0, currentTime - 5))}
-                            disabled={!isVideoLoaded}
-                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
-                            title="Back 5s"
-                        >
-                            <SkipBack className="h-5 w-5 transition-transform duration-200"/>
-                        </Button>
-
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={handleSlowDown}
-                            disabled={!isVideoLoaded || playbackRate <= 0.25}
-                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
-                            title="Slow down (←)"
-                        >
-                            <Rewind className="h-5 w-5 transition-transform duration-200"/>
-                        </Button>
 
                         <Button
                             variant="outline"
@@ -206,19 +172,20 @@ export default function VideoControls({
                             )}
                         </Button>
 
+                        {/* Speed Controller with Larger +/- Icons */}
                         <div
                             className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm h-12 px-4 gap-3">
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[50px] text-center">
-                {playbackRate.toFixed(2)}x
-              </span>
-                            <div className="flex items-center gap-1">
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[50px] text-center">
+                                {playbackRate.toFixed(2)}x
+                            </span>
+                            <div className="flex items-center gap-1.5">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => onChangePlaybackRate(Math.max(0.25, playbackRate - 0.25))}
                                     disabled={!isVideoLoaded}
-                                    className="h-7 px-2 text-xs font-bold"
-                                    title="Slow down"
+                                    className="h-8 w-8 p-0 text-lg font-bold flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-600 rounded"
+                                    title="Slow down (↓)"
                                 >
                                     -
                                 </Button>
@@ -227,8 +194,8 @@ export default function VideoControls({
                                     size="sm"
                                     onClick={() => onChangePlaybackRate(playbackRate + 0.25)}
                                     disabled={!isVideoLoaded}
-                                    className="h-7 px-2 text-xs font-bold"
-                                    title="Speed up"
+                                    className="h-8 w-8 p-0 text-lg font-bold flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-600 rounded"
+                                    title="Speed up (↑)"
                                 >
                                     +
                                 </Button>
@@ -244,7 +211,19 @@ export default function VideoControls({
                             className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg"
                             title="Help (?)"
                         >
-                            <HelpCircle className="h-5 w-5 transition-transform duration-200"/>
+                            <HelpCircle className="h-7 w-7 transition-transform duration-200"/>
+                        </Button>
+
+                        {/* New Undo Button */}
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={onUndo}
+                            disabled={!canUndo}
+                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 disabled:opacity-50"
+                            title="Undo Last Action (Z)"
+                        >
+                            <Undo2 className="h-5 w-5 transition-transform duration-200"/>
                         </Button>
                     </div>
 

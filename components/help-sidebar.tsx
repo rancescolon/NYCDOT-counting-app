@@ -53,7 +53,7 @@ const keyboardShortcuts = [
         color: "bg-red-500",
     },
     {
-        keys: ["←", "→"],
+        keys: ["↑", "↓"],
         description: "Slow down / Speed up",
         color: "bg-gray-500",
     },
