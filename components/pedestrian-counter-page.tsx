@@ -22,7 +22,6 @@ const STORAGE_KEY = "vehicle-counter-data"
 const AUTO_SAVE_INTERVAL = 5000
 
 export function extractTimeFromFilename(filename: string): Date | null {
-  // Regex for time, change if format ever changes from YYYYMMDD_HHMMSS
   const datePattern = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/
   const match = filename.match(datePattern)
   if (match) {
@@ -48,6 +47,7 @@ export default function PedestrianCounterPage() {
 
   const [isDrawingMode, setIsDrawingMode] = useState(false)
   const [videoQueue, setVideoQueue] = useState<File[]>([])
+  const [sessionFiles, setSessionFiles] = useState<File[]>([]) // NEW: Retains all files for seeking
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
@@ -57,7 +57,7 @@ export default function PedestrianCounterPage() {
 
   const [showExportModal, setShowExportModal] = useState(false)
   const [showHelpSidebar, setShowHelpSidebar] = useState(false)
-  const [showReviewSidebar, setShowReviewSidebar] = useState(false) // NEW
+  const [showReviewSidebar, setShowReviewSidebar] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
   const [showVideoRestorePrompt, setShowVideoRestorePrompt] = useState(false)
@@ -77,6 +77,7 @@ export default function PedestrianCounterPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const wasPlayingRef = useRef(false)
+  const pendingSeekRef = useRef<number | null>(null) // NEW: Holds seek time for video swapping
 
   const formatCurrentTimestamp = useCallback(() => {
     if (recordingStartTime && videoRef.current) {
@@ -110,7 +111,7 @@ export default function PedestrianCounterPage() {
     setEntries((prev) => [...prev, {
       id: Date.now().toString(),
       timestamp: formatCurrentTimestamp(),
-      videoTime: videoRef.current?.currentTime || 0, // NEW
+      videoTime: videoRef.current?.currentTime || 0,
       category, type, videoIndex: currentVideoIndex, note: hasQ ? '?' : undefined
     }])
     setRedoEntries([])
@@ -261,12 +262,26 @@ export default function PedestrianCounterPage() {
     setPlaybackRate(videoRef.current.playbackRate)
   }, [])
 
+  // NEW: Robust seeking for reviews across multiple videos
   const handleSeek = useCallback((time: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime = time
-      // We don't track currentTime state here anymore, video-controls does it internally
+      videoRef.current.pause()
+      setIsPlaying(false)
     }
   }, [])
+
+  const handleSeekToEntry = useCallback((entry: CountEntry) => {
+    if (entry.videoIndex !== currentVideoIndex && sessionFiles[entry.videoIndex]) {
+      // Need to switch video source to the one where the log happened
+      setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
+      setCurrentVideoIndex(entry.videoIndex)
+      pendingSeekRef.current = entry.videoTime
+    } else {
+      // Same video, just seek directly
+      handleSeek(entry.videoTime)
+    }
+  }, [currentVideoIndex, sessionFiles, handleSeek])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -292,7 +307,7 @@ export default function PedestrianCounterPage() {
   }, [videoSrc, playbackRate, isDrawingMode, changePlaybackRate, togglePlay, showNotesModal])
 
   const handleClearVideo = useCallback(() => {
-    setVideoSrc(null); setVideoQueue([]); setEntries([]); setRedoEntries([]); setStrokes([]); setRedoStrokes([])
+    setVideoSrc(null); setVideoQueue([]); setSessionFiles([]); setEntries([]); setRedoEntries([]); setStrokes([]); setRedoStrokes([])
     setIsPlaying(false); setPlaybackRate(1); setRecordingStartTime(null); setExtractedStartTime(null); setVideoCount(1)
     setCurrentVideoIndex(0); setVideoMetadata({}); localStorage.removeItem(STORAGE_KEY)
   }, [])
@@ -300,7 +315,6 @@ export default function PedestrianCounterPage() {
   const handleFilesSelect = useCallback((files: File[]) => {
     if (files.length === 0) return
 
-    // WIPE STATE FOR A NEW SECTION
     setEntries([])
     setRedoEntries([])
 
@@ -313,6 +327,7 @@ export default function PedestrianCounterPage() {
     const firstFile = sortedFiles[0]
     setVideoSrc(URL.createObjectURL(firstFile))
     setVideoQueue(sortedFiles.slice(1))
+    setSessionFiles(sortedFiles)
     setStrokes([])
 
     setExtractedStartTime(extractTimeFromFilename(firstFile.name))
@@ -334,8 +349,8 @@ export default function PedestrianCounterPage() {
     })
 
     setShowVideoEndPrompt(false)
+    setSessionFiles(prev => [...prev, ...sortedFiles])
 
-    // Simply append to queue and trigger playback if a video isn't already running
     if (!videoSrc) {
       setVideoSrc(URL.createObjectURL(sortedFiles[0]))
       setVideoQueue(sortedFiles.slice(1))
@@ -355,9 +370,9 @@ export default function PedestrianCounterPage() {
     }
 
     try {
-      // Use recordingStartTime (extracted from filename) for the export filename
+      // FIX: Export name only contains YYYY-MM-DD
       const dateToUse = recordingStartTime || new Date()
-      const timestamp = dateToUse.toISOString().slice(0, 19).replace(/:/g, "-")
+      const timestamp = dateToUse.toISOString().split('T')[0] // Only takes date
 
       const cutThroughCol: string[] = []
       const parkingCol: string[] = []
@@ -450,7 +465,7 @@ export default function PedestrianCounterPage() {
 
   return (
       <>
-        <main className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-96" : ""}`}>
+        <main className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-[400px]" : ""}`}>
           <div className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer" onClick={() => !isDrawingMode && togglePlay()}>
             <VideoPlayer
                 ref={videoRef}
@@ -460,9 +475,14 @@ export default function PedestrianCounterPage() {
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => {}}
                 onLoadedMetadata={() => {
-                  // FIX: Restore saved time or forcibly persist the user's playback rate across queues
                   if (videoRef.current) {
-                    if (pendingVideoRestore && savedStateForRestore) {
+                    // Check if we swapped videos specifically for a seek request via the Review panel
+                    if (pendingSeekRef.current !== null) {
+                      videoRef.current.currentTime = pendingSeekRef.current
+                      videoRef.current.pause()
+                      setIsPlaying(false)
+                      pendingSeekRef.current = null
+                    } else if (pendingVideoRestore && savedStateForRestore) {
                       videoRef.current.currentTime = savedStateForRestore.currentTime
                       videoRef.current.playbackRate = savedStateForRestore.playbackRate
                       setPlaybackRate(savedStateForRestore.playbackRate)
@@ -539,7 +559,7 @@ export default function PedestrianCounterPage() {
             isOpen={showReviewSidebar}
             onClose={() => setShowReviewSidebar(false)}
             entries={entries}
-            onSeek={handleSeek}
+            onSeekToEntry={handleSeekToEntry}
             onUpdateEntry={handleUpdateEntry}
         />
 

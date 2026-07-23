@@ -31,17 +31,18 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
       if (stroke.points.length < 2) return
       ctx.beginPath()
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y)
-      stroke.points.forEach((p) => ctx.lineTo(p.x, p.y))
+      ctx.lineTo(stroke.points[1].x, stroke.points[1].y)
       ctx.stroke()
     })
 
-    // Draw active path dynamically
+    // Draw active path dynamically as a perfectly straight rubber-band line
     if (currentPathRef.current.length > 1) {
       ctx.beginPath()
-      ctx.moveTo(currentPathRef.current[0].x, currentPathRef.current[0].y)
+      const startPoint = currentPathRef.current[0]
+      const currentPoint = currentPathRef.current[currentPathRef.current.length - 1]
 
-      // While drawing, show the actual path
-      currentPathRef.current.forEach((p) => ctx.lineTo(p.x, p.y))
+      ctx.moveTo(startPoint.x, startPoint.y)
+      ctx.lineTo(currentPoint.x, currentPoint.y)
       ctx.stroke()
     }
   }, [strokes])
@@ -51,13 +52,16 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
   useEffect(() => {
     const handleResize = () => {
       if (canvasRef.current) {
-        canvasRef.current.width = canvasRef.current.offsetWidth
-        canvasRef.current.height = canvasRef.current.offsetHeight
+        // Use getBoundingClientRect for exact sub-pixel layout alignment
+        const rect = canvasRef.current.getBoundingClientRect()
+        canvasRef.current.width = rect.width
+        canvasRef.current.height = rect.height
         draw()
       }
     }
     window.addEventListener("resize", handleResize)
-    handleResize()
+    // Small delay to ensure flexbox paints completely before measuring
+    setTimeout(handleResize, 50)
     return () => window.removeEventListener("resize", handleResize)
   }, [draw])
 
@@ -86,7 +90,7 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
       const startPoint = currentPathRef.current[0]
       const endPoint = currentPathRef.current[currentPathRef.current.length - 1]
 
-      // Prevent saving microscopic dots
+      // Prevent saving microscopic accidental dots
       const distance = Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y)
       if (distance > 5) {
         onAddStroke({
