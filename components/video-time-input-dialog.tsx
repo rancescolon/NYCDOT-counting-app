@@ -35,7 +35,6 @@ export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip, sugges
     const [year, month, day] = manualDate.split('-').map(Number)
     const [hour, minute] = manualTime.split(':').map(Number)
 
-    // Construct the manual date using local time
     const date = new Date(year, month - 1, day, hour, minute, 0)
     onConfirm(date)
   }
@@ -43,27 +42,22 @@ export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip, sugges
   return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-[420px] border border-slate-200 dark:border-slate-700">
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Set Video Start Time</h3>
+          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Confirm Time and Date</h3>
 
           {suggestedTime && !isManualMode ? (
               <div className="flex flex-col gap-4 animate-in fade-in">
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  We detected the following start time from the video file name:
-                </p>
+
 
                 <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center border border-slate-200 dark:border-slate-600">
               <span className="font-bold text-xl text-slate-800 dark:text-slate-100">
-                {suggestedTime.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                {suggestedTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}
               </span>
                   <br />
                   <span className="font-semibold text-lg text-blue-600 dark:text-blue-400">
-                {suggestedTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {suggestedTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: 'numeric', second: 'numeric' })}
               </span>
                 </div>
 
-                <p className="text-sm text-slate-600 dark:text-slate-300 text-center font-medium">
-                  Is this correct?
-                </p>
 
                 <div className="flex justify-end gap-3 mt-2">
                   <Button variant="outline" onClick={() => setIsManualMode(true)}>No, edit manually</Button>
