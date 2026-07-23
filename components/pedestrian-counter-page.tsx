@@ -20,6 +20,26 @@ const NotesModal = dynamic(() => import("@/components/notes-modal"), { ssr: fals
 const STORAGE_KEY = "vehicle-counter-data"
 const AUTO_SAVE_INTERVAL = 5000
 
+
+export function extractTimeFromFilename(filename: string): Date | null {
+  // Regex strictly targets 8 digits, an underscore, and 6 digits
+  const datePattern = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/
+  const match = filename.match(datePattern)
+  if (match) {
+    const [, year, month, day, hour, minute, second] = match
+    const date = new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute),
+        parseInt(second)
+    )
+    if (!isNaN(date.getTime())) return date
+  }
+  return null
+}
+
 export default function PedestrianCounterPage() {
   const [entries, setEntries] = useState<CountEntry[]>([])
   const [strokes, setStrokes] = useState<Stroke[]>([])
@@ -42,8 +62,10 @@ export default function PedestrianCounterPage() {
   const [showVideoRestorePrompt, setShowVideoRestorePrompt] = useState(false)
   const [savedStateForRestore, setSavedStateForRestore] = useState<SavedState | null>(null)
   const [pendingVideoRestore, setPendingVideoRestore] = useState(false)
+
   const [showTimeInputDialog, setShowTimeInputDialog] = useState(false)
   const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null)
+  const [extractedStartTime, setExtractedStartTime] = useState<Date | null>(null)
   const [showVideoEndPrompt, setShowVideoEndPrompt] = useState(false)
 
   const [videoCount, setVideoCount] = useState(1)
@@ -257,19 +279,38 @@ export default function PedestrianCounterPage() {
 
   const handleClearVideo = useCallback(() => {
     setVideoSrc(null); setVideoQueue([]); setEntries([]); setRedoEntries([]); setStrokes([]); setRedoStrokes([])
-    setIsPlaying(false); setPlaybackRate(1); setRecordingStartTime(null); setVideoCount(1)
+    setIsPlaying(false); setPlaybackRate(1); setRecordingStartTime(null); setExtractedStartTime(null); setVideoCount(1)
     setCurrentVideoIndex(0); setVideoMetadata({}); localStorage.removeItem(STORAGE_KEY)
   }, [])
 
   const handleFilesSelect = useCallback((files: File[]) => {
     if (files.length === 0) return
-    setVideoSrc(URL.createObjectURL(files[0]))
-    setVideoQueue(files.slice(1))
-    setStrokes([]); setRecordingStartTime(null); setShowTimeInputDialog(true)
-    setIsPlaying(false); setPlaybackRate(1); setCurrentVideoIndex(0)
+
+    // Sort files chronologically based on extracted filename timestamps
+    const sortedFiles = [...files].sort((a, b) => {
+      const timeA = extractTimeFromFilename(a.name)?.getTime() || 0
+      const timeB = extractTimeFromFilename(b.name)?.getTime() || 0
+      return timeA - timeB
+    })
+
+    const firstFile = sortedFiles[0]
+    const restOfQueue = sortedFiles.slice(1)
+
+    setVideoSrc(URL.createObjectURL(firstFile))
+    setVideoQueue(restOfQueue)
+    setStrokes([])
+
+    // Attempt to extract the timestamp for the dialog prompt
+    const extractedTime = extractTimeFromFilename(firstFile.name)
+    setExtractedStartTime(extractedTime)
+
+    setRecordingStartTime(null)
+    setShowTimeInputDialog(true)
+    setIsPlaying(false)
+    setPlaybackRate(1)
+    setCurrentVideoIndex(0)
   }, [])
 
-  // FIX: Full export logic restored
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
       setIsExporting(false)
@@ -380,8 +421,6 @@ export default function PedestrianCounterPage() {
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => {}}
-
-                // FIX: Applies saved time natively when video loads for seamless restore
                 onLoadedMetadata={() => {
                   if (pendingVideoRestore && savedStateForRestore && videoRef.current) {
                     videoRef.current.currentTime = savedStateForRestore.currentTime
@@ -419,9 +458,19 @@ export default function PedestrianCounterPage() {
 
         <NotesModal isOpen={showNotesModal} onClose={closeNotesModal} onSave={handleSaveNote} />
 
-        <VideoTimeInputDialog isOpen={showTimeInputDialog} onConfirm={(st) => { setRecordingStartTime(st); setShowTimeInputDialog(false) }} onSkip={() => setShowTimeInputDialog(false)} />
+        <VideoTimeInputDialog
+            isOpen={showTimeInputDialog}
+            suggestedTime={extractedStartTime}
+            onConfirm={(st) => {
+              setRecordingStartTime(st);
+              setShowTimeInputDialog(false)
+            }}
+            onSkip={() => {
+              setRecordingStartTime(null);
+              setShowTimeInputDialog(false)
+            }}
+        />
 
-        {/* FIX: Reconnected full state clearing for New Uploads */}
         <VideoEndPrompt
             isOpen={showVideoEndPrompt}
             onUploadNew={() => {
@@ -431,6 +480,7 @@ export default function PedestrianCounterPage() {
               setRedoEntries([])
               setRedoStrokes([])
               setRecordingStartTime(null)
+              setExtractedStartTime(null)
               setCurrentVideoIndex(videoCount)
               setVideoCount(v => v + 1)
               document.getElementById("video-upload-hidden")?.click()
@@ -445,7 +495,6 @@ export default function PedestrianCounterPage() {
 
         <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle} canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType} />
 
-        {/* FIX: Dismissing the restore wipes the ghost history using handleClearVideo */}
         {showVideoRestorePrompt && savedStateForRestore && (
             <VideoRestorePrompt
                 isOpen={showVideoRestorePrompt}

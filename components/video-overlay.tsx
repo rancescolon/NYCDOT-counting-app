@@ -21,7 +21,7 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
     if (!ctx) return
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = "rgba(59, 130, 246, 0.8)" // Primary blue
+    ctx.strokeStyle = "#FF262D"
     ctx.lineWidth = 4
     ctx.lineCap = "round"
     ctx.lineJoin = "round"

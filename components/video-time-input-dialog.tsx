@@ -2,119 +2,115 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Clock, Calendar } from "lucide-react"
 
 interface VideoTimeInputDialogProps {
   isOpen: boolean
   onConfirm: (startTime: Date) => void
   onSkip: () => void
+  suggestedTime?: Date | null
 }
 
-export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip }: VideoTimeInputDialogProps) {
-  const [date, setDate] = useState("")
-  const [time, setTime] = useState("")
-  const [error, setError] = useState("")
+export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip, suggestedTime }: VideoTimeInputDialogProps) {
+  const [isManualMode, setIsManualMode] = useState(false)
+  const [manualDate, setManualDate] = useState("")
+  const [manualTime, setManualTime] = useState("")
 
   useEffect(() => {
     if (isOpen) {
-      // Set default to current date and time
-      const now = new Date()
-      const dateStr = now.toISOString().split("T")[0]
-      const timeStr = now.toTimeString().slice(0, 5)
-      setDate(dateStr)
-      setTime(timeStr)
-      setError("")
-    }
-  }, [isOpen])
+      // If we have a suggested time, default to confirmation screen. Otherwise, go straight to manual.
+      setIsManualMode(!suggestedTime)
 
-  const handleConfirm = () => {
-    if (!date || !time) {
-      setError("Please enter both date and time")
-      return
+      const defaultDate = suggestedTime || new Date()
+      // Format to YYYY-MM-DD for the date input
+      setManualDate(defaultDate.toISOString().split('T')[0])
+      // Format to HH:MM for the time input (local time)
+      setManualTime(defaultDate.toTimeString().split(' ')[0].substring(0, 5))
     }
-
-    try {
-      const startTime = new Date(`${date}T${time}:00`)
-      if (isNaN(startTime.getTime())) {
-        setError("Invalid date or time format")
-        return
-      }
-      onConfirm(startTime)
-    } catch (err) {
-      setError("Invalid date or time format")
-    }
-  }
-
-  const handleSkip = () => {
-    onSkip()
-  }
+  }, [isOpen, suggestedTime])
 
   if (!isOpen) return null
 
+  const handleConfirmManual = () => {
+    if (!manualDate || !manualTime) return
+    const [year, month, day] = manualDate.split('-').map(Number)
+    const [hour, minute] = manualTime.split(':').map(Number)
+
+    // Construct the manual date using local time
+    const date = new Date(year, month - 1, day, hour, minute, 0)
+    onConfirm(date)
+  }
+
   return (
-    <Dialog open={isOpen}>
-      <DialogContent className="max-w-md mx-auto" hideCloseButton>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
-            Video Recording Time
-          </DialogTitle>
-          <DialogDescription>
-            Enter when this video was recorded to calculate accurate timestamps in your export data.
-          </DialogDescription>
-        </DialogHeader>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-[420px] border border-slate-200 dark:border-slate-700">
+          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Set Video Start Time</h3>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="date" className="text-sm font-medium">
-              Recording Date
-            </Label>
-            <div className="relative">
-              <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="border rounded-md p-2 bg-white text-black dark:bg-black dark:text-white"
-                  placeholder="Select date"
-              />
+          {suggestedTime && !isManualMode ? (
+              <div className="flex flex-col gap-4 animate-in fade-in">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  We detected the following start time from the video file name:
+                </p>
 
-            </div>
-          </div>
+                <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg text-center border border-slate-200 dark:border-slate-600">
+              <span className="font-bold text-xl text-slate-800 dark:text-slate-100">
+                {suggestedTime.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+              </span>
+                  <br />
+                  <span className="font-semibold text-lg text-blue-600 dark:text-blue-400">
+                {suggestedTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+                </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="time" className="text-sm font-medium">
-              Recording Time
-            </Label>
-            <div className="relative">
-              <Input
-                id="time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="border rounded-md p-2 bg-white text-black dark:bg-black dark:text-white"
-                placeholder="Select time"
-              />
-            </div>
-          </div>
+                <p className="text-sm text-slate-600 dark:text-slate-300 text-center font-medium">
+                  Is this correct?
+                </p>
 
-          {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">{error}</div>}
+                <div className="flex justify-end gap-3 mt-2">
+                  <Button variant="outline" onClick={() => setIsManualMode(true)}>No, edit manually</Button>
+                  <Button onClick={() => onConfirm(suggestedTime)} className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm">Yes, use this time</Button>
+                </div>
+              </div>
+          ) : (
+              <div className="flex flex-col gap-4 animate-in fade-in">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Please enter the exact date and time this video started recording.
+                </p>
 
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">Date</label>
+                    <input
+                        type="date"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                        value={manualDate}
+                        onChange={e => setManualDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">Time</label>
+                    <input
+                        type="time"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                        value={manualTime}
+                        onChange={e => setManualTime(e.target.value)}
+                    />
+                  </div>
+                </div>
 
+                <div className="flex items-center justify-between mt-4">
+                  <Button variant="ghost" onClick={onSkip} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-xs px-2">
+                    Skip / Use Current Time
+                  </Button>
+                  <div className="flex gap-2">
+                    {suggestedTime && (
+                        <Button variant="outline" onClick={() => setIsManualMode(false)}>Back</Button>
+                    )}
+                    <Button onClick={handleConfirmManual} className="bg-blue-600 text-white hover:bg-blue-700">Confirm</Button>
+                  </div>
+                </div>
+              </div>
+          )}
         </div>
-
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleSkip} className="flex-1 bg-transparent">
-            Skip (Use Video Time)
-          </Button>
-          <Button onClick={handleConfirm} className="flex-1 bg-blue-600 hover:bg-blue-700">
-            Confirm Time
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
   )
 }
