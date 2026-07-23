@@ -9,8 +9,7 @@ import { useVehicleInput } from "@/hooks/use-vehicle-input"
 import { CountEntry, Stroke, SavedState, VideoMetadata, VehicleCategory, VehicleType } from "@/lib/types"
 import * as XLSX from "xlsx-js-style"
 
-// Lazy loaders
-const ExportProgressModal = dynamic(() => import("@/components/export-progress-modal"), { ssr: false })
+// Lazy loaders (ExportProgressModal removed)
 const HelpSidebar = dynamic(() => import("@/components/help-sidebar"), { ssr: false })
 const ReviewSidebar = dynamic(() => import("@/components/review-sidebar"), { ssr: false })
 const VideoRestorePrompt = dynamic(() => import("@/components/video-restore-prompt"), { ssr: false })
@@ -46,10 +45,8 @@ export default function PedestrianCounterPage() {
   const [redoStrokes, setRedoStrokes] = useState<Stroke[]>([])
 
   const [isDrawingMode, setIsDrawingMode] = useState(false)
-
-  // ARCHITECTURE FIX: Retain all uploaded files in order for seeking
+  const [videoQueue, setVideoQueue] = useState<File[]>([])
   const [sessionFiles, setSessionFiles] = useState<File[]>([])
-
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
@@ -74,6 +71,7 @@ export default function PedestrianCounterPage() {
   const [videoCount, setVideoCount] = useState(1)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [videoMetadata, setVideoMetadata] = useState<Record<number, VideoMetadata>>({})
+  const [isExporting, setIsExporting] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -225,13 +223,11 @@ export default function PedestrianCounterPage() {
     return () => clearInterval(autoSaveIntervalRef.current!)
   }, [saveToStorage, isDataLoaded])
 
-  // NEW: Robust End of Video Logic utilizing `sessionFiles`
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
     const handleVideoEnd = () => {
       if (currentVideoIndex + 1 < sessionFiles.length) {
-        // Prepare next video in the session queue
         const nextIndex = currentVideoIndex + 1
         if (recordingStartTime && videoRef.current) {
           setRecordingStartTime(new Date(recordingStartTime.getTime() + videoRef.current.duration * 1000))
@@ -264,14 +260,18 @@ export default function PedestrianCounterPage() {
     setPlaybackRate(videoRef.current.playbackRate)
   }, [])
 
+  const handleSeek = useCallback((time: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = time
+    }
+  }, [])
+
   const handleSeekToEntry = useCallback((entry: CountEntry) => {
     if (entry.videoIndex !== currentVideoIndex && sessionFiles[entry.videoIndex]) {
-      // Different Video: Swap source and wait for loadedmetadata
       setCurrentVideoIndex(entry.videoIndex)
       setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
       pendingSeekRef.current = entry.videoTime
     } else {
-      // Same Video: Seek directly
       if (videoRef.current) {
         videoRef.current.currentTime = entry.videoTime
         videoRef.current.pause()
@@ -348,16 +348,18 @@ export default function PedestrianCounterPage() {
     const newSessionFiles = [...sessionFiles, ...sortedFiles]
     setSessionFiles(newSessionFiles)
     setShowVideoEndPrompt(false)
+    setShowExportModal(false) // Closes export modal if it was open
 
-    // If we were at the end, immediately resume playing the first new file
-    if (showVideoEndPrompt || !videoSrc) {
-      const nextIdx = sessionFiles.length
-      setCurrentVideoIndex(nextIdx)
-      setVideoSrc(URL.createObjectURL(newSessionFiles[nextIdx]))
+    if (!videoSrc) {
+      setVideoSrc(URL.createObjectURL(sortedFiles[0]))
+      setVideoQueue(sortedFiles.slice(1))
       setVideoCount(prev => prev + 1)
+      setCurrentVideoIndex(prev => prev + 1)
       setTimeout(() => setIsPlaying(true), 200)
+    } else {
+      setVideoQueue(prev => [...prev, ...sortedFiles])
     }
-  }, [sessionFiles, showVideoEndPrompt, videoSrc])
+  }, [sessionFiles, videoSrc])
 
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
@@ -367,7 +369,7 @@ export default function PedestrianCounterPage() {
 
     try {
       const dateToUse = recordingStartTime || new Date()
-      const timestamp = dateToUse.toISOString().split('T')[0] // Date only format
+      const timestamp = dateToUse.toISOString().split('T')[0]
 
       const cutThroughCol: string[] = []
       const parkingCol: string[] = []
@@ -452,6 +454,7 @@ export default function PedestrianCounterPage() {
     } catch (error) {
       console.error("Failed to export Excel file:", error)
     }
+    setIsExporting(false)
     setShowExportModal(false)
   }, [entries, handleClearVideo, recordingStartTime])
 
@@ -527,15 +530,17 @@ export default function PedestrianCounterPage() {
             }}
         />
 
+        {/* The End Prompt Menu */}
         <VideoEndPrompt
             isOpen={showVideoEndPrompt}
+            mode="end"
             onAddMoreVideos={handleAddMoreVideos}
             onStartNewSection={() => {
               setShowVideoEndPrompt(false)
               handleClearVideo()
               document.getElementById("video-upload-hidden")?.click()
             }}
-            onExport={() => setShowExportModal(true)}
+            onExport={handleExportComplete}
             onReview={() => {
               setShowVideoEndPrompt(false)
               setShowReviewSidebar(true)
@@ -544,10 +549,24 @@ export default function PedestrianCounterPage() {
             videoCount={videoCount}
         />
 
-        <ExportProgressModal
+        {/* The new unified Export Menu */}
+        <VideoEndPrompt
             isOpen={showExportModal}
-            onComplete={handleExportComplete}
+            mode="export"
+            onAddMoreVideos={handleAddMoreVideos}
+            onStartNewSection={() => {
+              setShowExportModal(false)
+              handleClearVideo()
+              document.getElementById("video-upload-hidden")?.click()
+            }}
+            onExport={handleExportComplete}
+            onReview={() => {
+              setShowExportModal(false)
+              setShowReviewSidebar(true)
+            }}
             onCancel={() => setShowExportModal(false)}
+            totalCounts={entries.length}
+            videoCount={videoCount}
         />
 
         <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle} canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType} />

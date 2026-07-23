@@ -15,10 +15,15 @@ interface ReviewSidebarProps {
 export default function ReviewSidebar({ isOpen, onClose, entries, onSeekToEntry, onUpdateEntry }: ReviewSidebarProps) {
     if (!isOpen) return null
 
-    // FIX: Explicitly include all entries that contain a '?' OR are a non-Car modifier
-    const flaggedEntries = entries.filter(e =>
-        (e.note && e.note.includes('?')) || e.type !== 'Car'
-    )
+    // 1. Strictly filter for entries that have a note attached (via 'Q' or 'N' presses)
+    const flaggedEntries = entries.filter(e => e.note && e.note.trim().length > 0)
+
+    // 2. Group the flagged entries by the video queue index
+    const groupedEntries = flaggedEntries.reduce((acc, entry) => {
+        if (!acc[entry.videoIndex]) acc[entry.videoIndex] = []
+        acc[entry.videoIndex].push(entry)
+        return acc
+    }, {} as Record<number, CountEntry[]>)
 
     return (
         <div className="fixed inset-y-0 right-0 w-[400px] bg-white dark:bg-slate-900 shadow-[rgba(0,0,0,0.3)_0px_0px_30px] border-l border-slate-200 dark:border-slate-800 z-50 flex flex-col animate-in slide-in-from-right duration-300">
@@ -46,57 +51,77 @@ export default function ReviewSidebar({ isOpen, onClose, entries, onSeekToEntry,
                         <p className="text-slate-500 text-sm mt-1">No flagged entries require review.</p>
                     </div>
                 ) : (
-                    flaggedEntries.map((entry, i) => (
-                        <div key={entry.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3">
-                            <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Log #{entries.findIndex(e => e.id === entry.id) + 1}
-                </span>
-                                <Button
-                                    size="sm"
-                                    variant="default"
-                                    className="h-7 text-xs px-3 bg-indigo-600 hover:bg-indigo-700 text-white"
-                                    onClick={() => onSeekToEntry(entry)}
-                                >
-                                    Review Video
-                                </Button>
-                            </div>
+                    Object.keys(groupedEntries).map((key) => {
+                        const vIndex = Number(key)
+                        const group = groupedEntries[vIndex]
 
-                            <div className="flex gap-2">
-                                <select
-                                    className="flex-1 p-2 text-sm font-medium border rounded-md bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    value={entry.category}
-                                    onChange={(e) => onUpdateEntry(entry.id, { ...entry, category: e.target.value as VehicleCategory })}
-                                >
-                                    <option value="cut_through">Cut Through</option>
-                                    <option value="parking">Sidewalk Parking</option>
-                                    <option value="driving">Sidewalk Driving</option>
-                                </select>
+                        return (
+                            <div key={`vid-group-${vIndex}`} className="flex flex-col gap-3">
 
-                                <select
-                                    className="w-28 p-2 text-sm font-medium border rounded-md bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    value={entry.type}
-                                    onChange={(e) => onUpdateEntry(entry.id, { ...entry, type: e.target.value as VehicleType })}
-                                >
-                                    <option value="Car">Car</option>
-                                    <option value="Moto">Moto</option>
-                                    <option value="Ebike">E-Bike</option>
-                                    <option value="Truck">Truck</option>
-                                </select>
-                            </div>
+                                {/* VIDEO DIVIDER */}
+                                <div className="flex items-center gap-3 mt-4 mb-2 first:mt-0">
+                                    <div className="h-px bg-slate-300 dark:bg-slate-700 flex-1"></div>
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                    Video #{vIndex + 1} <br/>
+                    <span className="text-[10px] font-medium text-slate-400">At {group[0].timestamp}</span>
+                  </span>
+                                    <div className="h-px bg-slate-300 dark:bg-slate-700 flex-1"></div>
+                                </div>
 
-                            <div>
-                                <label className="text-[11px] font-semibold text-slate-400 uppercase mb-1 block">Notes / Modifiers</label>
-                                <input
-                                    type="text"
-                                    placeholder="Enter notes..."
-                                    className="w-full p-2 text-sm border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    value={entry.note || ""}
-                                    onChange={(e) => onUpdateEntry(entry.id, { ...entry, note: e.target.value })}
-                                />
+                                {group.map((entry) => (
+                                    <div key={entry.id} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3">
+                                        <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        Log #{entries.findIndex(e => e.id === entry.id) + 1}
+                      </span>
+                                            <Button
+                                                size="sm"
+                                                variant="default"
+                                                className="h-7 text-xs px-3 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                onClick={() => onSeekToEntry(entry)}
+                                            >
+                                                Review Video
+                                            </Button>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <select
+                                                className="flex-1 p-2 text-sm font-medium border rounded-md bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                value={entry.category}
+                                                onChange={(e) => onUpdateEntry(entry.id, { ...entry, category: e.target.value as VehicleCategory })}
+                                            >
+                                                <option value="cut_through">Cut Through</option>
+                                                <option value="parking">Sidewalk Parking</option>
+                                                <option value="driving">Sidewalk Driving</option>
+                                            </select>
+
+                                            <select
+                                                className="w-28 p-2 text-sm font-medium border rounded-md bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                value={entry.type}
+                                                onChange={(e) => onUpdateEntry(entry.id, { ...entry, type: e.target.value as VehicleType })}
+                                            >
+                                                <option value="Car">Car</option>
+                                                <option value="Moto">Moto</option>
+                                                <option value="Ebike">E-Bike</option>
+                                                <option value="Truck">Truck</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-slate-400 uppercase mb-1 block">Notes / Modifiers</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Enter notes..."
+                                                className="w-full p-2 text-sm border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                value={entry.note || ""}
+                                                onChange={(e) => onUpdateEntry(entry.id, { ...entry, note: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
-                    ))
+                        )
+                    })
                 )}
             </div>
         </div>

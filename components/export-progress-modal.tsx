@@ -12,7 +12,7 @@ interface ExportProgressModalProps {
 }
 
 export default function ExportProgressModal({ isOpen, onComplete, onCancel }: ExportProgressModalProps) {
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(true)
 
   // Emulate a short loading progress bar for visual feedback
   useEffect(() => {
@@ -27,13 +27,16 @@ export default function ExportProgressModal({ isOpen, onComplete, onCancel }: Ex
 
   return (
       <Dialog open={isOpen}>
+        {/* [&>button]:hidden hides the default Radix UI close 'X' button inside Shadcn's DialogContent */}
         <DialogContent className="max-w-md mx-auto [&>button]:hidden">
           <DialogTitle className="sr-only">Exporting Video</DialogTitle>
 
           <div className="flex flex-col items-center p-2 space-y-6">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-colors duration-500 ${isProcessing ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'bg-gradient-to-br from-green-500 to-green-600'}`}>
+
+            {/* Matches the VideoEndPrompt icon container styling */}
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-colors duration-500 ${isProcessing ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-green-500 to-green-600'}`}>
               {isProcessing ? (
-                  <Loader2 className="h-10 w-10 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                  <Loader2 className="h-10 w-10 text-white animate-spin" />
               ) : (
                   <CheckCircle className="h-10 w-10 text-white" />
               )}
@@ -41,7 +44,7 @@ export default function ExportProgressModal({ isOpen, onComplete, onCancel }: Ex
 
             <div className="text-center space-y-2">
               <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
-                {isProcessing ? "Exporting Video..." : "Ready to Download"}
+                {isProcessing ? "Exporting Video..." : "Export Complete!"}
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-300">
                 {isProcessing
@@ -50,7 +53,7 @@ export default function ExportProgressModal({ isOpen, onComplete, onCancel }: Ex
               </p>
             </div>
 
-            <div className="flex flex-col w-full space-y-3 mt-4">
+            <div className="flex flex-col w-full space-y-3">
               <Button
                   onClick={onComplete}
                   disabled={isProcessing}
@@ -62,8 +65,8 @@ export default function ExportProgressModal({ isOpen, onComplete, onCancel }: Ex
 
               <Button
                   onClick={onCancel}
-                  variant="ghost"
-                  className="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 bg-transparent border-slate-300 dark:border-slate-700"
               >
                 Cancel
               </Button>
