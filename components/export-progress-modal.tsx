@@ -1,90 +1,72 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Loader2, Download, CheckCircle } from "lucide-react"
 
 interface ExportProgressModalProps {
   isOpen: boolean
   onComplete: () => void
-  totalEntries: number
-  groupedEntries: number // Currently unused, kept for prop compatibility
+  onCancel: () => void
 }
 
-export default function ExportProgressModal({
-                                              isOpen,
-                                              onComplete,
-                                              totalEntries,
-                                            }: ExportProgressModalProps) {
-  const [progress, setProgress] = useState(0)
-  const [status, setStatus] = useState<"processing" | "formatting" | "complete">("processing")
+export default function ExportProgressModal({ isOpen, onComplete, onCancel }: ExportProgressModalProps) {
+  const [isProcessing, setIsProcessing] = useState(false)
 
+  // Emulate a short loading progress bar for visual feedback
   useEffect(() => {
     if (isOpen) {
-      setProgress(0)
-      setStatus("processing")
-
-      const timer1 = setTimeout(() => {
-        setProgress(50)
-        setStatus("formatting")
-      }, 600)
-
-      const timer2 = setTimeout(() => {
-        setProgress(100)
-        setStatus("complete")
+      setIsProcessing(true)
+      const timer = setTimeout(() => {
+        setIsProcessing(false)
       }, 1500)
-
-      const timer3 = setTimeout(() => {
-        onComplete()
-      }, 2000)
-
-      return () => {
-        clearTimeout(timer1)
-        clearTimeout(timer2)
-        clearTimeout(timer3)
-      }
+      return () => clearTimeout(timer)
     }
-  }, [isOpen, onComplete])
+  }, [isOpen])
 
   return (
-      <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Exporting Vehicle Data</DialogTitle>
-            <DialogDescription>
-              Please wait while we format your session data into an Excel-ready spreadsheet.
-            </DialogDescription>
-          </DialogHeader>
+      <Dialog open={isOpen}>
+        <DialogContent className="max-w-md mx-auto [&>button]:hidden">
+          <DialogTitle className="sr-only">Exporting Video</DialogTitle>
 
-          <div className="py-6 space-y-6">
-            <Progress value={progress} className="h-2" />
+          <div className="flex flex-col items-center p-2 space-y-6">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-colors duration-500 ${isProcessing ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'bg-gradient-to-br from-green-500 to-green-600'}`}>
+              {isProcessing ? (
+                  <Loader2 className="h-10 w-10 text-indigo-600 dark:text-indigo-400 animate-spin" />
+              ) : (
+                  <CheckCircle className="h-10 w-10 text-white" />
+              )}
+            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                {status === "processing" ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500"/>
-                ) : (
-                    <CheckCircle2 className="h-4 w-4 text-green-500"/>
-                )}
-                Processing {totalEntries} logged vehicles
-              </span>
-              </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
+                {isProcessing ? "Exporting Video..." : "Ready to Download"}
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {isProcessing
+                    ? "Please wait while we compile and format your logged data into an Excel spreadsheet."
+                    : "Your Excel file has been formatted and is ready for download."}
+              </p>
+            </div>
 
-              <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                {status === "complete" ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500"/>
-                ) : status === "formatting" ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500"/>
-                ) : (
-                    <div className="h-4 w-4"/>
-                )}
-                Generating Excel Workbook (.xlsx)
-              </span>
-              </div>
+            <div className="flex flex-col w-full space-y-3 mt-4">
+              <Button
+                  onClick={onComplete}
+                  disabled={isProcessing}
+                  className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+                Download Excel File
+              </Button>
 
+              <Button
+                  onClick={onCancel}
+                  variant="ghost"
+                  className="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                Cancel
+              </Button>
             </div>
           </div>
         </DialogContent>

@@ -15,17 +15,13 @@ interface ReviewSidebarProps {
 export default function ReviewSidebar({ isOpen, onClose, entries, onSeekToEntry, onUpdateEntry }: ReviewSidebarProps) {
     if (!isOpen) return null
 
-    const formatCat = (cat: string) => {
-        if (cat === 'cut_through') return 'Cut Through'
-        if (cat === 'parking') return 'Sidewalk Parking'
-        return 'Sidewalk Driving'
-    }
-
-    // Strictly filter for entries that contain the '?' flag
-    const flaggedEntries = entries.filter(e => e.note && e.note.includes('?'))
+    // FIX: Explicitly include all entries that contain a '?' OR are a non-Car modifier
+    const flaggedEntries = entries.filter(e =>
+        (e.note && e.note.includes('?')) || e.type !== 'Car'
+    )
 
     return (
-        <div className="fixed inset-y-0 right-0 w-[400px] bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 z-50 flex flex-col animate-in slide-in-from-right duration-300">
+        <div className="fixed inset-y-0 right-0 w-[400px] bg-white dark:bg-slate-900 shadow-[rgba(0,0,0,0.3)_0px_0px_30px] border-l border-slate-200 dark:border-slate-800 z-50 flex flex-col animate-in slide-in-from-right duration-300">
 
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                 <div>
@@ -59,7 +55,7 @@ export default function ReviewSidebar({ isOpen, onClose, entries, onSeekToEntry,
                                 <Button
                                     size="sm"
                                     variant="default"
-                                    className="h-7 text-xs px-3 bg-indigo-600 hover:bg-indigo-700"
+                                    className="h-7 text-xs px-3 bg-indigo-600 hover:bg-indigo-700 text-white"
                                     onClick={() => onSeekToEntry(entry)}
                                 >
                                     Review Video
@@ -73,8 +69,8 @@ export default function ReviewSidebar({ isOpen, onClose, entries, onSeekToEntry,
                                     onChange={(e) => onUpdateEntry(entry.id, { ...entry, category: e.target.value as VehicleCategory })}
                                 >
                                     <option value="cut_through">Cut Through</option>
-                                    <option value="parking">Parking</option>
-                                    <option value="driving">Driving</option>
+                                    <option value="parking">Sidewalk Parking</option>
+                                    <option value="driving">Sidewalk Driving</option>
                                 </select>
 
                                 <select

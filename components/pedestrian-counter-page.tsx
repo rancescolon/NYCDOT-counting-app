@@ -46,8 +46,10 @@ export default function PedestrianCounterPage() {
   const [redoStrokes, setRedoStrokes] = useState<Stroke[]>([])
 
   const [isDrawingMode, setIsDrawingMode] = useState(false)
-  const [videoQueue, setVideoQueue] = useState<File[]>([])
-  const [sessionFiles, setSessionFiles] = useState<File[]>([]) // NEW: Retains all files for seeking
+
+  // ARCHITECTURE FIX: Retain all uploaded files in order for seeking
+  const [sessionFiles, setSessionFiles] = useState<File[]>([])
+
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
@@ -72,12 +74,11 @@ export default function PedestrianCounterPage() {
   const [videoCount, setVideoCount] = useState(1)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [videoMetadata, setVideoMetadata] = useState<Record<number, VideoMetadata>>({})
-  const [isExporting, setIsExporting] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const wasPlayingRef = useRef(false)
-  const pendingSeekRef = useRef<number | null>(null) // NEW: Holds seek time for video swapping
+  const pendingSeekRef = useRef<number | null>(null)
 
   const formatCurrentTimestamp = useCallback(() => {
     if (recordingStartTime && videoRef.current) {
@@ -224,18 +225,19 @@ export default function PedestrianCounterPage() {
     return () => clearInterval(autoSaveIntervalRef.current!)
   }, [saveToStorage, isDataLoaded])
 
+  // NEW: Robust End of Video Logic utilizing `sessionFiles`
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
     const handleVideoEnd = () => {
-      if (videoQueue.length > 0) {
+      if (currentVideoIndex + 1 < sessionFiles.length) {
+        // Prepare next video in the session queue
+        const nextIndex = currentVideoIndex + 1
         if (recordingStartTime && videoRef.current) {
           setRecordingStartTime(new Date(recordingStartTime.getTime() + videoRef.current.duration * 1000))
         }
-        setVideoSrc(URL.createObjectURL(videoQueue[0]))
-        setVideoQueue(prev => prev.slice(1))
-        setCurrentVideoIndex(prev => prev + 1)
-        setVideoCount(prev => prev + 1)
+        setCurrentVideoIndex(nextIndex)
+        setVideoSrc(URL.createObjectURL(sessionFiles[nextIndex]))
         setTimeout(() => setIsPlaying(true), 200)
       } else {
         setIsPlaying(false)
@@ -244,7 +246,7 @@ export default function PedestrianCounterPage() {
     }
     video.addEventListener("ended", handleVideoEnd)
     return () => video.removeEventListener("ended", handleVideoEnd)
-  }, [videoSrc, videoQueue, recordingStartTime])
+  }, [videoSrc, currentVideoIndex, sessionFiles, recordingStartTime])
 
   useEffect(() => {
     if (isPlaying && videoRef.current && videoSrc) videoRef.current.play().catch(e => console.error(e))
@@ -262,26 +264,21 @@ export default function PedestrianCounterPage() {
     setPlaybackRate(videoRef.current.playbackRate)
   }, [])
 
-  // NEW: Robust seeking for reviews across multiple videos
-  const handleSeek = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time
-      videoRef.current.pause()
-      setIsPlaying(false)
-    }
-  }, [])
-
   const handleSeekToEntry = useCallback((entry: CountEntry) => {
     if (entry.videoIndex !== currentVideoIndex && sessionFiles[entry.videoIndex]) {
-      // Need to switch video source to the one where the log happened
-      setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
+      // Different Video: Swap source and wait for loadedmetadata
       setCurrentVideoIndex(entry.videoIndex)
+      setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
       pendingSeekRef.current = entry.videoTime
     } else {
-      // Same video, just seek directly
-      handleSeek(entry.videoTime)
+      // Same Video: Seek directly
+      if (videoRef.current) {
+        videoRef.current.currentTime = entry.videoTime
+        videoRef.current.pause()
+        setIsPlaying(false)
+      }
     }
-  }, [currentVideoIndex, sessionFiles, handleSeek])
+  }, [currentVideoIndex, sessionFiles])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -307,7 +304,7 @@ export default function PedestrianCounterPage() {
   }, [videoSrc, playbackRate, isDrawingMode, changePlaybackRate, togglePlay, showNotesModal])
 
   const handleClearVideo = useCallback(() => {
-    setVideoSrc(null); setVideoQueue([]); setSessionFiles([]); setEntries([]); setRedoEntries([]); setStrokes([]); setRedoStrokes([])
+    setVideoSrc(null); setSessionFiles([]); setEntries([]); setRedoEntries([]); setStrokes([]); setRedoStrokes([])
     setIsPlaying(false); setPlaybackRate(1); setRecordingStartTime(null); setExtractedStartTime(null); setVideoCount(1)
     setCurrentVideoIndex(0); setVideoMetadata({}); localStorage.removeItem(STORAGE_KEY)
   }, [])
@@ -325,9 +322,9 @@ export default function PedestrianCounterPage() {
     })
 
     const firstFile = sortedFiles[0]
-    setVideoSrc(URL.createObjectURL(firstFile))
-    setVideoQueue(sortedFiles.slice(1))
     setSessionFiles(sortedFiles)
+
+    setVideoSrc(URL.createObjectURL(firstFile))
     setStrokes([])
 
     setExtractedStartTime(extractTimeFromFilename(firstFile.name))
@@ -348,31 +345,29 @@ export default function PedestrianCounterPage() {
       return timeA - timeB
     })
 
+    const newSessionFiles = [...sessionFiles, ...sortedFiles]
+    setSessionFiles(newSessionFiles)
     setShowVideoEndPrompt(false)
-    setSessionFiles(prev => [...prev, ...sortedFiles])
 
-    if (!videoSrc) {
-      setVideoSrc(URL.createObjectURL(sortedFiles[0]))
-      setVideoQueue(sortedFiles.slice(1))
+    // If we were at the end, immediately resume playing the first new file
+    if (showVideoEndPrompt || !videoSrc) {
+      const nextIdx = sessionFiles.length
+      setCurrentVideoIndex(nextIdx)
+      setVideoSrc(URL.createObjectURL(newSessionFiles[nextIdx]))
       setVideoCount(prev => prev + 1)
-      setCurrentVideoIndex(prev => prev + 1)
       setTimeout(() => setIsPlaying(true), 200)
-    } else {
-      setVideoQueue(prev => [...prev, ...sortedFiles])
     }
-  }, [videoSrc])
+  }, [sessionFiles, showVideoEndPrompt, videoSrc])
 
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
-      setIsExporting(false)
       setShowExportModal(false)
       return
     }
 
     try {
-      // FIX: Export name only contains YYYY-MM-DD
       const dateToUse = recordingStartTime || new Date()
-      const timestamp = dateToUse.toISOString().split('T')[0] // Only takes date
+      const timestamp = dateToUse.toISOString().split('T')[0] // Date only format
 
       const cutThroughCol: string[] = []
       const parkingCol: string[] = []
@@ -457,7 +452,6 @@ export default function PedestrianCounterPage() {
     } catch (error) {
       console.error("Failed to export Excel file:", error)
     }
-    setIsExporting(false)
     setShowExportModal(false)
   }, [entries, handleClearVideo, recordingStartTime])
 
@@ -476,7 +470,6 @@ export default function PedestrianCounterPage() {
                 onTimeUpdate={() => {}}
                 onLoadedMetadata={() => {
                   if (videoRef.current) {
-                    // Check if we swapped videos specifically for a seek request via the Review panel
                     if (pendingSeekRef.current !== null) {
                       videoRef.current.currentTime = pendingSeekRef.current
                       videoRef.current.pause()
@@ -551,7 +544,11 @@ export default function PedestrianCounterPage() {
             videoCount={videoCount}
         />
 
-        <ExportProgressModal isOpen={showExportModal} onComplete={handleExportComplete} totalEntries={entries.length} groupedEntries={3} />
+        <ExportProgressModal
+            isOpen={showExportModal}
+            onComplete={handleExportComplete}
+            onCancel={() => setShowExportModal(false)}
+        />
 
         <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle} canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType} />
 
