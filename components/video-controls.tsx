@@ -4,22 +4,12 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Play, Pause, HelpCircle, Undo2 } from "lucide-react"
+import { Play, Pause, HelpCircle, Undo } from "lucide-react"
 import { ControlsPanel } from "./controls-panel"
-
-export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
-export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
-
-export interface CountEntry {
-    id: string
-    timestamp: string
-    category: VehicleCategory
-    type: VehicleType
-    videoIndex: number
-    note?: string
-}
+import { CountEntry } from "@/lib/types"
 
 interface VideoControlsProps {
+    videoRef: React.RefObject<HTMLVideoElement>
     isPlaying: boolean
     playbackRate: number
     onTogglePlay: () => void
@@ -29,10 +19,6 @@ interface VideoControlsProps {
     onFinish: () => void
     onClearVideo: () => void
     canUndo: boolean
-    canFinish: boolean
-    currentTime: number
-    duration: number
-    onSeek: (time: number) => void
     onShowHelp?: () => void
     totalCount: number
     lastEntry?: CountEntry
@@ -43,27 +29,37 @@ interface VideoControlsProps {
 }
 
 export default function VideoControls({
-                                          isPlaying,
-                                          playbackRate,
-                                          onTogglePlay,
-                                          onChangePlaybackRate,
-                                          isVideoLoaded,
-                                          onUndo,
-                                          canUndo,
-                                          onFinish,
-                                          currentTime,
-                                          duration,
-                                          onSeek,
-                                          onShowHelp,
-                                          totalCount,
-                                          lastEntry,
-                                          isDrawingMode,
-                                          onToggleDrawingMode,
-                                          onClearStrokes,
+                                          videoRef, isPlaying, playbackRate, onTogglePlay, onChangePlaybackRate,
+                                          isVideoLoaded, onUndo, canUndo, onFinish, onShowHelp, totalCount,
+                                          lastEntry, isDrawingMode, onToggleDrawingMode, onClearStrokes,
                                       }: VideoControlsProps) {
+    const [currentTime, setCurrentTime] = useState(0)
+    const [duration, setDuration] = useState(0)
     const [isScrubbing, setIsScrubbing] = useState(false)
+
     const scrubBarRef = useRef<HTMLDivElement>(null)
-    const helpButtonRef = useRef<HTMLButtonElement>(null)
+
+    // Internalized time tracking
+    useEffect(() => {
+        const video = videoRef.current
+        if (!video) return
+
+        const updateTime = () => setCurrentTime(video.currentTime)
+        const updateDuration = () => setDuration(video.duration || 0)
+
+        video.addEventListener('timeupdate', updateTime)
+        video.addEventListener('loadedmetadata', updateDuration)
+        video.addEventListener('durationchange', updateDuration)
+
+        setCurrentTime(video.currentTime || 0)
+        setDuration(video.duration || 0)
+
+        return () => {
+            video.removeEventListener('timeupdate', updateTime)
+            video.removeEventListener('loadedmetadata', updateDuration)
+            video.removeEventListener('durationchange', updateDuration)
+        }
+    }, [videoRef, isVideoLoaded])
 
     const formatTime = (timeInSeconds: number) => {
         if (isNaN(timeInSeconds) || timeInSeconds < 0) return "00:00"
@@ -72,49 +68,36 @@ export default function VideoControls({
         return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
     }
 
-    const handleScrub = useCallback(
-        (e: React.MouseEvent | MouseEvent) => {
-            if (!scrubBarRef.current || !isVideoLoaded || duration === 0) return
+    const handleSeek = useCallback((time: number) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = time
+            setCurrentTime(time)
+        }
+    }, [videoRef])
 
-            const rect = scrubBarRef.current.getBoundingClientRect()
-            const clickX = e.clientX - rect.left
-            const percentage = Math.max(0, Math.min(1, clickX / rect.width))
-            const newTime = percentage * duration
-            onSeek(newTime)
-        },
-        [isVideoLoaded, duration, onSeek],
-    )
+    const handleScrub = useCallback((e: React.MouseEvent | MouseEvent) => {
+        if (!scrubBarRef.current || !isVideoLoaded || duration === 0) return
+        const rect = scrubBarRef.current.getBoundingClientRect()
+        const clickX = e.clientX - rect.left
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width))
+        handleSeek(percentage * duration)
+    }, [isVideoLoaded, duration, handleSeek])
 
-    const handleScrubStart = useCallback(
-        (e: React.MouseEvent) => {
-            if (!isVideoLoaded) return
-            e.preventDefault()
-            e.stopPropagation()
-            setIsScrubbing(true)
-            handleScrub(e)
-        },
-        [isVideoLoaded, handleScrub],
-    )
+    const handleScrubStart = useCallback((e: React.MouseEvent) => {
+        if (!isVideoLoaded) return
+        e.preventDefault()
+        e.stopPropagation()
+        setIsScrubbing(true)
+        handleScrub(e)
+    }, [isVideoLoaded, handleScrub])
 
-    const handleScrubEnd = useCallback(() => {
-        setIsScrubbing(false)
-    }, [])
+    const handleScrubEnd = useCallback(() => setIsScrubbing(false), [])
 
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (isScrubbing) {
-                handleScrub(e)
-            }
-        }
-        const handleMouseUp = () => {
-            if (isScrubbing) {
-                handleScrubEnd()
-            }
-        }
-
+        const handleMouseMove = (e: MouseEvent) => { if (isScrubbing) handleScrub(e) }
+        const handleMouseUp = () => { if (isScrubbing) handleScrubEnd() }
         window.addEventListener("mousemove", handleMouseMove)
         window.addEventListener("mouseup", handleMouseUp)
-
         return () => {
             window.removeEventListener("mousemove", handleMouseMove)
             window.removeEventListener("mouseup", handleMouseUp)
@@ -131,12 +114,9 @@ export default function VideoControls({
                     ref={scrubBarRef}
                     onMouseDown={handleScrubStart}
                 >
+                    <div className="absolute h-full bg-primary rounded-full transition-all duration-100 ease-linear" style={{ width: `${progressPercentage}%` }} />
                     <div
-                        className="absolute h-full bg-primary rounded-full transition-all duration-100 ease-linear"
-                        style={{ width: `${progressPercentage}%` }}
-                    />
-                    <div
-                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full shadow-md transition-all duration-200 group-hover:scale-125 group-hover:shadow-lg"
+                        className="absolute top-1/2 w-4 h-4 bg-primary rounded-full shadow-md transition-all duration-200 group-hover:scale-125"
                         style={{
                             left: `${progressPercentage}%`,
                             transform: `translateX(-50%) translateY(-50%)`,
@@ -152,79 +132,40 @@ export default function VideoControls({
 
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1">
-
                         <Button
                             variant="outline"
                             size="lg"
                             onClick={onTogglePlay}
                             disabled={!isVideoLoaded}
-                            className="flex-1 h-12 flex items-center justify-center bg-white dark:bg-slate-700 hover:bg-accent transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 font-semibold text-base hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
+                            className="flex-1 h-12 flex items-center justify-center font-semibold text-base"
                         >
                             {isPlaying ? (
-                                <>
-                                    <Pause className="h-5 w-5 mr-3 transition-transform duration-200"/>
-                                    <span className="leading-none">Pause</span>
-                                </>
+                                <><Pause className="h-5 w-5 mr-3" /> Pause</>
                             ) : (
-                                <>
-                                    <Play className="h-5 w-5 mr-3 transition-transform duration-200"/>
-                                    <span className="leading-none">Play</span>
-                                </>
+                                <><Play className="h-5 w-5 mr-3" /> Play</>
                             )}
                         </Button>
 
-                        {/* Speed Controller with Larger +/- Icons */}
-                        <div
-                            className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm h-12 px-4 gap-3">
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[50px] text-center">
+                        <div className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm h-12 px-4 gap-3">
+                            <span className="text-sm font-semibold min-w-[50px] text-center">
                                 {playbackRate.toFixed(2)}x
                             </span>
                             <div className="flex items-center gap-1.5">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onChangePlaybackRate(Math.max(0.25, playbackRate - 0.25))}
-                                    disabled={!isVideoLoaded}
-                                    className="h-8 w-8 p-0 text-lg font-bold flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-600 rounded"
-                                    title="Slow down (↓)"
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => onChangePlaybackRate(Math.max(0.25, playbackRate - 0.25))} disabled={!isVideoLoaded} className="h-8 w-8 text-lg font-bold">
                                     -
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onChangePlaybackRate(playbackRate + 0.25)}
-                                    disabled={!isVideoLoaded}
-                                    className="h-8 w-8 p-0 text-lg font-bold flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-600 rounded"
-                                    title="Speed up (↑)"
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => onChangePlaybackRate(playbackRate + 0.25)} disabled={!isVideoLoaded} className="h-8 w-8 text-lg font-bold">
                                     +
                                 </Button>
                             </div>
                         </div>
 
-                        <Button
-                            ref={helpButtonRef}
-                            variant="outline"
-                            size="icon"
-                            onClick={onShowHelp}
-                            data-help-trigger
-                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg"
-                            title="Help (?)"
-                        >
-                            <HelpCircle className="h-7 w-7 transition-transform duration-200"/>
+                        <Button variant="outline" size="icon" onClick={onShowHelp} className="w-12 h-12">
+                            <HelpCircle className="h-5 w-5" />
                         </Button>
 
-                        {/* New Undo Button */}
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={onUndo}
-                            disabled={!canUndo}
-                            className="w-12 h-12 flex items-center justify-center hover:bg-accent bg-white dark:bg-slate-700 transition-all duration-200 shadow-sm border-slate-200 dark:border-slate-600 hover:scale-105 hover:shadow-lg disabled:hover:scale-100 disabled:opacity-50"
-                            title="Undo Last Action (Z)"
-                        >
-                            <Undo2 className="h-5 w-5 transition-transform duration-200"/>
+                        <Button variant="outline" size="icon" onClick={onUndo} disabled={!canUndo} className="w-12 h-12">
+                            <Undo className="h-5 w-5" />
                         </Button>
                     </div>
 

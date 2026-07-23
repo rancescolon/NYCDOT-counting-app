@@ -205,21 +205,8 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
                     <h1 id="restore-title" className="text-xl font-bold text-gray-900 dark:text-white">
                       Resume Session
                     </h1>
-                    <p id="restore-description" className="text-sm text-gray-600 dark:text-gray-300">
-                      Continue from {formatTime(savedData.currentTime)} with {savedData.totalCounts} counts
-                    </p>
                   </div>
                 </div>
-                <Button
-                  ref={dismissButtonRef}
-                  variant="ghost"
-                  size="icon"
-                  onClick={onDismiss}
-                  className="h-10 w-10 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:ring-2 focus:ring-blue-500"
-                  aria-label="Close dialog and start new session"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
               </div>
             </div>
 
