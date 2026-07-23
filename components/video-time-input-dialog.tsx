@@ -92,13 +92,8 @@ export default function VideoTimeInputDialog({ isOpen, onConfirm, onSkip, sugges
                 </div>
 
                 <div className="flex items-center justify-between mt-4">
-                  <Button variant="ghost" onClick={onSkip} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-xs px-2">
-                    Skip / Use Current Time
-                  </Button>
+
                   <div className="flex gap-2">
-                    {suggestedTime && (
-                        <Button variant="outline" onClick={() => setIsManualMode(false)}>Back</Button>
-                    )}
                     <Button onClick={handleConfirmManual} className="bg-blue-600 text-white hover:bg-blue-700">Confirm</Button>
                   </div>
                 </div>

@@ -35,10 +35,12 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
       ctx.stroke()
     })
 
-    // Draw active path dynamically without triggering React state
+    // Draw active path dynamically
     if (currentPathRef.current.length > 1) {
       ctx.beginPath()
       ctx.moveTo(currentPathRef.current[0].x, currentPathRef.current[0].y)
+
+      // While drawing, show the actual path
       currentPathRef.current.forEach((p) => ctx.lineTo(p.x, p.y))
       ctx.stroke()
     }
@@ -78,8 +80,20 @@ export function VideoOverlay({ isDrawingMode, strokes, onAddStroke }: VideoOverl
   const handlePointerUp = () => {
     if (!isDrawingMode || !isDrawingRef.current) return
     isDrawingRef.current = false
+
+    // Auto-straighten: Snap line to first and last points only
     if (currentPathRef.current.length > 1) {
-      onAddStroke({ id: Date.now().toString(), points: [...currentPathRef.current] })
+      const startPoint = currentPathRef.current[0]
+      const endPoint = currentPathRef.current[currentPathRef.current.length - 1]
+
+      // Prevent saving microscopic dots
+      const distance = Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y)
+      if (distance > 5) {
+        onAddStroke({
+          id: Date.now().toString(),
+          points: [startPoint, endPoint]
+        })
+      }
     }
     currentPathRef.current = []
     draw()

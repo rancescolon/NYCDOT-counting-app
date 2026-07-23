@@ -308,7 +308,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
                             ) : (
                                 <div className="text-center text-muted-foreground p-8 select-none flex flex-col items-center justify-center w-full h-full">
                                     <UploadCloud className="h-16 w-16 text-slate-400 mb-4 transition-transform duration-300 hover:scale-110" />
-                                    <p className="text-lg font-semibold mb-2 leading-tight">Drag & drop multiple videos here</p>
+                                    <p className="text-lg font-semibold mb-2 leading-tight">Drag & drop videos here</p>
                                     <p className="text-sm mb-4 leading-tight">or click anywhere to select files</p>
 
                                     <div className="bg-slate-100 dark:bg-slate-700 rounded-lg px-6 py-5 mb-6 max-w-md relative">

@@ -9,9 +9,10 @@ import { useVehicleInput } from "@/hooks/use-vehicle-input"
 import { CountEntry, Stroke, SavedState, VideoMetadata, VehicleCategory, VehicleType } from "@/lib/types"
 import * as XLSX from "xlsx-js-style"
 
-// Lazy load non-critical UI to boost initial render speed
+// Lazy loaders
 const ExportProgressModal = dynamic(() => import("@/components/export-progress-modal"), { ssr: false })
 const HelpSidebar = dynamic(() => import("@/components/help-sidebar"), { ssr: false })
+const ReviewSidebar = dynamic(() => import("@/components/review-sidebar"), { ssr: false })
 const VideoRestorePrompt = dynamic(() => import("@/components/video-restore-prompt"), { ssr: false })
 const VideoTimeInputDialog = dynamic(() => import("@/components/video-time-input-dialog"), { ssr: false })
 const VideoEndPrompt = dynamic(() => import("@/components/video-end-prompt"), { ssr: false })
@@ -20,9 +21,8 @@ const NotesModal = dynamic(() => import("@/components/notes-modal"), { ssr: fals
 const STORAGE_KEY = "vehicle-counter-data"
 const AUTO_SAVE_INTERVAL = 5000
 
-
 export function extractTimeFromFilename(filename: string): Date | null {
-  // Regex strictly targets 8 digits, an underscore, and 6 digits
+  // Regex for time, change if format ever changes from YYYYMMDD_HHMMSS
   const datePattern = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/
   const match = filename.match(datePattern)
   if (match) {
@@ -57,6 +57,7 @@ export default function PedestrianCounterPage() {
 
   const [showExportModal, setShowExportModal] = useState(false)
   const [showHelpSidebar, setShowHelpSidebar] = useState(false)
+  const [showReviewSidebar, setShowReviewSidebar] = useState(false) // NEW
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
   const [showVideoRestorePrompt, setShowVideoRestorePrompt] = useState(false)
@@ -107,7 +108,9 @@ export default function PedestrianCounterPage() {
   const handleLog = useCallback((category: VehicleCategory, type: VehicleType, hasQ = false, hasN = false) => {
     if (!videoSrc) return
     setEntries((prev) => [...prev, {
-      id: Date.now().toString(), timestamp: formatCurrentTimestamp(),
+      id: Date.now().toString(),
+      timestamp: formatCurrentTimestamp(),
+      videoTime: videoRef.current?.currentTime || 0, // NEW
       category, type, videoIndex: currentVideoIndex, note: hasQ ? '?' : undefined
     }])
     setRedoEntries([])
@@ -170,6 +173,10 @@ export default function PedestrianCounterPage() {
     })
     closeNotesModal()
   }, [closeNotesModal])
+
+  const handleUpdateEntry = useCallback((id: string, updatedEntry: CountEntry) => {
+    setEntries(prev => prev.map(entry => entry.id === id ? updatedEntry : entry))
+  }, [])
 
   const { activeModifierType } = useVehicleInput(
       handleLog, handleUndoVehicle, handleRedoVehicle, handleUndoStroke,
@@ -254,6 +261,13 @@ export default function PedestrianCounterPage() {
     setPlaybackRate(videoRef.current.playbackRate)
   }, [])
 
+  const handleSeek = useCallback((time: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = time
+      // We don't track currentTime state here anymore, video-controls does it internally
+    }
+  }, [])
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target as Element)?.closest("[contenteditable]") || showNotesModal) return
@@ -286,7 +300,10 @@ export default function PedestrianCounterPage() {
   const handleFilesSelect = useCallback((files: File[]) => {
     if (files.length === 0) return
 
-    // Sort files chronologically based on extracted filename timestamps
+    // WIPE STATE FOR A NEW SECTION
+    setEntries([])
+    setRedoEntries([])
+
     const sortedFiles = [...files].sort((a, b) => {
       const timeA = extractTimeFromFilename(a.name)?.getTime() || 0
       const timeB = extractTimeFromFilename(b.name)?.getTime() || 0
@@ -294,22 +311,41 @@ export default function PedestrianCounterPage() {
     })
 
     const firstFile = sortedFiles[0]
-    const restOfQueue = sortedFiles.slice(1)
-
     setVideoSrc(URL.createObjectURL(firstFile))
-    setVideoQueue(restOfQueue)
+    setVideoQueue(sortedFiles.slice(1))
     setStrokes([])
 
-    // Attempt to extract the timestamp for the dialog prompt
-    const extractedTime = extractTimeFromFilename(firstFile.name)
-    setExtractedStartTime(extractedTime)
-
+    setExtractedStartTime(extractTimeFromFilename(firstFile.name))
     setRecordingStartTime(null)
     setShowTimeInputDialog(true)
     setIsPlaying(false)
     setPlaybackRate(1)
     setCurrentVideoIndex(0)
+    setVideoCount(1)
   }, [])
+
+  const handleAddMoreVideos = useCallback((files: File[]) => {
+    if (files.length === 0) return
+
+    const sortedFiles = [...files].sort((a, b) => {
+      const timeA = extractTimeFromFilename(a.name)?.getTime() || 0
+      const timeB = extractTimeFromFilename(b.name)?.getTime() || 0
+      return timeA - timeB
+    })
+
+    setShowVideoEndPrompt(false)
+
+    // Simply append to queue and trigger playback if a video isn't already running
+    if (!videoSrc) {
+      setVideoSrc(URL.createObjectURL(sortedFiles[0]))
+      setVideoQueue(sortedFiles.slice(1))
+      setVideoCount(prev => prev + 1)
+      setCurrentVideoIndex(prev => prev + 1)
+      setTimeout(() => setIsPlaying(true), 200)
+    } else {
+      setVideoQueue(prev => [...prev, ...sortedFiles])
+    }
+  }, [videoSrc])
 
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
@@ -319,7 +355,9 @@ export default function PedestrianCounterPage() {
     }
 
     try {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-")
+      // Use recordingStartTime (extracted from filename) for the export filename
+      const dateToUse = recordingStartTime || new Date()
+      const timestamp = dateToUse.toISOString().slice(0, 19).replace(/:/g, "-")
 
       const cutThroughCol: string[] = []
       const parkingCol: string[] = []
@@ -406,13 +444,13 @@ export default function PedestrianCounterPage() {
     }
     setIsExporting(false)
     setShowExportModal(false)
-  }, [entries, handleClearVideo])
+  }, [entries, handleClearVideo, recordingStartTime])
 
   if (!isDataLoaded) return <div className="h-screen w-screen bg-gradient-to-br flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>
 
   return (
       <>
-        <main className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${showHelpSidebar ? "pr-84" : ""}`}>
+        <main className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-96" : ""}`}>
           <div className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer" onClick={() => !isDrawingMode && togglePlay()}>
             <VideoPlayer
                 ref={videoRef}
@@ -422,11 +460,16 @@ export default function PedestrianCounterPage() {
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => {}}
                 onLoadedMetadata={() => {
-                  if (pendingVideoRestore && savedStateForRestore && videoRef.current) {
-                    videoRef.current.currentTime = savedStateForRestore.currentTime
-                    videoRef.current.playbackRate = savedStateForRestore.playbackRate
-                    setPlaybackRate(savedStateForRestore.playbackRate)
-                    setPendingVideoRestore(false)
+                  // FIX: Restore saved time or forcibly persist the user's playback rate across queues
+                  if (videoRef.current) {
+                    if (pendingVideoRestore && savedStateForRestore) {
+                      videoRef.current.currentTime = savedStateForRestore.currentTime
+                      videoRef.current.playbackRate = savedStateForRestore.playbackRate
+                      setPlaybackRate(savedStateForRestore.playbackRate)
+                      setPendingVideoRestore(false)
+                    } else {
+                      videoRef.current.playbackRate = playbackRate
+                    }
                   }
                 }}
             />
@@ -473,20 +516,17 @@ export default function PedestrianCounterPage() {
 
         <VideoEndPrompt
             isOpen={showVideoEndPrompt}
-            onUploadNew={() => {
+            onAddMoreVideos={handleAddMoreVideos}
+            onStartNewSection={() => {
               setShowVideoEndPrompt(false)
-              setEntries([])
-              setStrokes([])
-              setRedoEntries([])
-              setRedoStrokes([])
-              setRecordingStartTime(null)
-              setExtractedStartTime(null)
-              setCurrentVideoIndex(videoCount)
-              setVideoCount(v => v + 1)
+              handleClearVideo()
               document.getElementById("video-upload-hidden")?.click()
             }}
             onExport={() => setShowExportModal(true)}
-            onReplay={() => { setShowVideoEndPrompt(false); if(videoRef.current) videoRef.current.currentTime = 0; togglePlay() }}
+            onReview={() => {
+              setShowVideoEndPrompt(false)
+              setShowReviewSidebar(true)
+            }}
             totalCounts={entries.length}
             videoCount={videoCount}
         />
@@ -494,6 +534,14 @@ export default function PedestrianCounterPage() {
         <ExportProgressModal isOpen={showExportModal} onComplete={handleExportComplete} totalEntries={entries.length} groupedEntries={3} />
 
         <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle} canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType} />
+
+        <ReviewSidebar
+            isOpen={showReviewSidebar}
+            onClose={() => setShowReviewSidebar(false)}
+            entries={entries}
+            onSeek={handleSeek}
+            onUpdateEntry={handleUpdateEntry}
+        />
 
         {showVideoRestorePrompt && savedStateForRestore && (
             <VideoRestorePrompt

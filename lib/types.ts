@@ -6,6 +6,7 @@ export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
 export interface CountEntry {
     id: string
     timestamp: string
+    videoTime: number
     category: VehicleCategory
     type: VehicleType
     videoIndex: number

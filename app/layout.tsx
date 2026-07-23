@@ -4,9 +4,9 @@ import Link from "next/link"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Pedestrian Counting App",
-  description: "An app for counting pedestrians in videos",
-  generator: "v0.dev",
+  title: "DOT Counting App",
+  description: "An app for counting in videos",
+  generator: "Rances Colon",
 }
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header className="bg-gray-800 text-white p-4 flex justify-between items-center">
+        <header className="bg-black text-white p-4 flex justify-between items-center">
           <Link href="/" className="text-xl font-bold">
             DOT Counting App
           </Link>
