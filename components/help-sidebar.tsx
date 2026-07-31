@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Undo2 } from "lucide-react"
+import { ChevronRight, Undo2,ExternalLink } from "lucide-react"
 
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
 export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
@@ -202,14 +202,28 @@ export default function HelpSidebar({
                                     })}
                                 </div>
 
-                                <div className="mt-6 bg-gray-100 dark:bg-blue-900/20 border border-blue-700 dark:border-blue-800 rounded-lg p-4 mb-4">
-                                    <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 text-sm">Quick Tips</h4>
-                                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-2">
+                                <div className="mt-6 rounded-lg border border-blue-500 bg-gray-100 p-4 mb-4 dark:border-blue-400 dark:bg-gray-800">
+                                    <h4 className="mb-3 text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                        Quick Tips
+                                    </h4>
+
+                                    <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                                         <li>• Press <strong>1, 2, or 3</strong> to log a vehicle (incorporates any held modifier).</li>
                                         <li>• Hold <strong>M, E/B, or T</strong> to change the vehicle type.</li>
                                         <li>• Press <strong>Shift</strong> to toggle drawing restricted zones.</li>
                                         <li>• Press <strong>Z</strong> to undo the last logged vehicle.</li>
                                         <li>• Press <strong>Shift + Z</strong> to undo the last drawn line.</li>
+                                        <li>
+                                            <a
+                                                href="https://scribehow.com/o/3GFUEJCXRdq_VBvGu59luw/viewer/How_To_Use_The_NYCDOT_Traffic_Video_Counting_App__I3HaCYxETYuEN6NGyajSNw"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 font-medium text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                            >
+                                                How to use the app
+                                                <ExternalLink className="h-4 w-4" />
+                                            </a>
+                                        </li>
                                     </ul>
                                 </div>
                             </div>
