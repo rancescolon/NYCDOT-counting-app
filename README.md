@@ -8,6 +8,7 @@ A React(Next.JS)/Tailwind + TypeScript web app for tracking pedestrian counts. B
 
 - Node.js (v18+ recommended)
 - npm
+- Set up HTTP/HTTPS DOT proxy  
 ### Next.js Setup
 
 If you need to set up Next.js:
@@ -51,4 +52,4 @@ https://rancescolon.github.io/NYCDOT-counting-app/
   - counter/page.tsx — Counter feature
  
 # how to use app 
-https://scribehow.com/viewer/How_to_use_Counting_tool__we9DplVoSeet0iaL145XJA
+https://scribehow.com/o/3GFUEJCXRdq_VBvGu59luw/viewer/How_To_Use_The_NYCDOT_Traffic_Video_Counting_App__I3HaCYxETYuEN6NGyajSNw
