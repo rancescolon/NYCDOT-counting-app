@@ -38,7 +38,7 @@ export function extractTimeFromFilename(filename: string): Date | null {
   return null
 }
 
-export default function PedestrianCounterPage() {
+function CounterPage() {
   const [entries, setEntries] = useState<CountEntry[]>([])
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoEntries, setRedoEntries] = useState<CountEntry[]>([])
@@ -155,7 +155,7 @@ export default function PedestrianCounterPage() {
     setEntries(prev => {
       if (prev.length === 0) return prev
       const newEntries = [...prev]
-      const last = { ...newEntries[newEntries.length - 1] }
+      const last = {...newEntries[newEntries.length - 1]}
       if (!last.note?.includes('?')) last.note = last.note ? `${last.note} ?` : `?`
       newEntries[newEntries.length - 1] = last
       return newEntries
@@ -166,7 +166,7 @@ export default function PedestrianCounterPage() {
     setEntries(prev => {
       if (prev.length === 0) return prev
       const newEntries = [...prev]
-      const last = { ...newEntries[newEntries.length - 1] }
+      const last = {...newEntries[newEntries.length - 1]}
       last.note = last.note ? `${last.note} | ${noteText}` : noteText || '?'
       newEntries[newEntries.length - 1] = last
       return newEntries
@@ -178,7 +178,7 @@ export default function PedestrianCounterPage() {
     setEntries(prev => prev.map(entry => entry.id === id ? updatedEntry : entry))
   }, [])
 
-  const { activeModifierType } = useVehicleInput(
+  const {activeModifierType} = useVehicleInput(
       handleLog, handleUndoVehicle, handleRedoVehicle, handleUndoStroke,
       handleRedoStroke, handleRetroactiveQ, handleRetroactiveN, isDrawingMode
   )
@@ -192,7 +192,9 @@ export default function PedestrianCounterPage() {
         lastSaved: Date.now(), recordingStartTime: recordingStartTime?.toISOString(),
         videoCount, currentVideoIndex, videoMetadata,
       }))
-    } catch (e) { console.error("Failed to save:", e) }
+    } catch (e) {
+      console.error("Failed to save:", e)
+    }
   }, [entries, strokes, videoSrc, playbackRate, recordingStartTime, videoCount, currentVideoIndex, videoMetadata])
 
   const loadFromStorage = useCallback(() => {
@@ -212,10 +214,15 @@ export default function PedestrianCounterPage() {
         setVideoCount(parsedData.videoCount || 1)
         setCurrentVideoIndex(parsedData.currentVideoIndex || 0)
       }
-    } catch (e) { localStorage.removeItem(STORAGE_KEY) }
+    } catch (e) {
+      localStorage.removeItem(STORAGE_KEY)
+    }
   }, [])
 
-  useEffect(() => { loadFromStorage(); setIsDataLoaded(true) }, [loadFromStorage])
+  useEffect(() => {
+    loadFromStorage();
+    setIsDataLoaded(true)
+  }, [loadFromStorage])
 
   useEffect(() => {
     if (!isDataLoaded) return
@@ -285,28 +292,54 @@ export default function PedestrianCounterPage() {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target as Element)?.closest("[contenteditable]") || showNotesModal) return
 
       const key = event.key.toLowerCase()
-      if (key === "?" || key === "/") { event.preventDefault(); setShowHelpSidebar(prev => !prev); return }
-      if (key === "shift" && !event.repeat) { event.preventDefault(); setIsDrawingMode(prev => !prev); return }
+      if (key === "?" || key === "/") {
+        event.preventDefault();
+        setShowHelpSidebar(prev => !prev);
+        return
+      }
+      if (key === "shift" && !event.repeat) {
+        event.preventDefault();
+        setIsDrawingMode(prev => !prev);
+        return
+      }
       if (isDrawingMode) return
 
-      if (key === " " && videoSrc) { event.preventDefault(); togglePlay() }
-      else if (key === "arrowleft" && videoSrc && videoRef.current) {
-        event.preventDefault(); videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5)
+      if (key === " " && videoSrc) {
+        event.preventDefault();
+        togglePlay()
+      } else if (key === "arrowleft" && videoSrc && videoRef.current) {
+        event.preventDefault();
+        videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5)
+      } else if (key === "arrowright" && videoSrc && videoRef.current) {
+        event.preventDefault();
+        videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 5)
+      } else if (key === "arrowdown" && videoSrc) {
+        event.preventDefault();
+        changePlaybackRate(playbackRate - 0.25)
+      } else if (key === "arrowup" && videoSrc) {
+        event.preventDefault();
+        changePlaybackRate(playbackRate + 0.25)
       }
-      else if (key === "arrowright" && videoSrc && videoRef.current) {
-        event.preventDefault(); videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 5)
-      }
-      else if (key === "arrowdown" && videoSrc) { event.preventDefault(); changePlaybackRate(playbackRate - 0.25) }
-      else if (key === "arrowup" && videoSrc) { event.preventDefault(); changePlaybackRate(playbackRate + 0.25) }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [videoSrc, playbackRate, isDrawingMode, changePlaybackRate, togglePlay, showNotesModal])
 
   const handleClearVideo = useCallback(() => {
-    setVideoSrc(null); setSessionFiles([]); setEntries([]); setRedoEntries([]); setStrokes([]); setRedoStrokes([])
-    setIsPlaying(false); setPlaybackRate(1); setRecordingStartTime(null); setExtractedStartTime(null); setVideoCount(1)
-    setCurrentVideoIndex(0); setVideoMetadata({}); localStorage.removeItem(STORAGE_KEY)
+    setVideoSrc(null);
+    setSessionFiles([]);
+    setEntries([]);
+    setRedoEntries([]);
+    setStrokes([]);
+    setRedoStrokes([])
+    setIsPlaying(false);
+    setPlaybackRate(1);
+    setRecordingStartTime(null);
+    setExtractedStartTime(null);
+    setVideoCount(1)
+    setCurrentVideoIndex(0);
+    setVideoMetadata({});
+    localStorage.removeItem(STORAGE_KEY)
   }, [])
 
   const handleFilesSelect = useCallback((files: File[]) => {
@@ -391,8 +424,7 @@ export default function PedestrianCounterPage() {
             const noteStr = `A${rowIndex + 2}: ${baseNote}`
             notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
           }
-        }
-        else if (entry.category === 'parking') {
+        } else if (entry.category === 'parking') {
           parkingCol.push(entry.timestamp)
           rowIndex = parkingCol.length - 1
 
@@ -402,8 +434,7 @@ export default function PedestrianCounterPage() {
             const noteStr = `B${rowIndex + 2}: ${baseNote}`
             notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
           }
-        }
-        else if (entry.category === 'driving') {
+        } else if (entry.category === 'driving') {
           sidewalkCol.push(entry.timestamp)
           rowIndex = sidewalkCol.length - 1
 
@@ -428,20 +459,23 @@ export default function PedestrianCounterPage() {
       }
 
       const worksheet = XLSX.utils.json_to_sheet(excelData)
-      worksheet['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 30 }]
+      worksheet['!cols'] = [{wch: 15}, {wch: 18}, {wch: 18}, {wch: 30}]
 
       const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:D1")
       for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C })
+          const cellAddress = XLSX.utils.encode_cell({r: R, c: C})
           if (!worksheet[cellAddress]) continue
-          worksheet[cellAddress].s = { font: { name: "Calibri", sz: 11 }, alignment: { vertical: "center", horizontal: "left" } }
+          worksheet[cellAddress].s = {
+            font: {name: "Calibri", sz: 11},
+            alignment: {vertical: "center", horizontal: "left"}
+          }
           if (R === 0) {
             worksheet[cellAddress].s.font.bold = true
-            worksheet[cellAddress].s.fill = { fgColor: { rgb: "E2EFDA" } }
-            worksheet[cellAddress].s.border = { bottom: { style: "medium", color: { rgb: "000000" } } }
+            worksheet[cellAddress].s.fill = {fgColor: {rgb: "E2EFDA"}}
+            worksheet[cellAddress].s.border = {bottom: {style: "medium", color: {rgb: "000000"}}}
           } else {
-            worksheet[cellAddress].s.fill = { fgColor: { rgb: (R % 2 === 0) ? "F2F2F2" : "FFFFFF" } }
+            worksheet[cellAddress].s.fill = {fgColor: {rgb: (R % 2 === 0) ? "F2F2F2" : "FFFFFF"}}
           }
         }
       }
@@ -458,19 +492,24 @@ export default function PedestrianCounterPage() {
     setShowExportModal(false)
   }, [entries, handleClearVideo, recordingStartTime])
 
-  if (!isDataLoaded) return <div className="h-screen w-screen bg-gradient-to-br flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>
+  if (!isDataLoaded) return <div className="h-screen w-screen bg-gradient-to-br flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
 
   return (
       <>
-        <main className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-[400px]" : ""}`}>
-          <div className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer" onClick={() => !isDrawingMode && togglePlay()}>
+        <main
+            className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-[400px]" : ""}`}>
+          <div className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer"
+               onClick={() => !isDrawingMode && togglePlay()}>
             <VideoPlayer
                 ref={videoRef}
                 videoSrc={videoSrc}
                 onFilesSelect={handleFilesSelect}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
-                onTimeUpdate={() => {}}
+                onTimeUpdate={() => {
+                }}
                 onLoadedMetadata={() => {
                   if (videoRef.current) {
                     if (pendingSeekRef.current !== null) {
@@ -489,7 +528,7 @@ export default function PedestrianCounterPage() {
                   }
                 }}
             />
-            {videoSrc && <VideoOverlay isDrawingMode={isDrawingMode} strokes={strokes} onAddStroke={handleAddStroke} />}
+            {videoSrc && <VideoOverlay isDrawingMode={isDrawingMode} strokes={strokes} onAddStroke={handleAddStroke}/>}
           </div>
 
           <div className="flex-shrink-0 mt-2">
@@ -515,7 +554,7 @@ export default function PedestrianCounterPage() {
           </div>
         </main>
 
-        <NotesModal isOpen={showNotesModal} onClose={closeNotesModal} onSave={handleSaveNote} />
+        <NotesModal isOpen={showNotesModal} onClose={closeNotesModal} onSave={handleSaveNote}/>
 
         <VideoTimeInputDialog
             isOpen={showTimeInputDialog}
@@ -569,7 +608,8 @@ export default function PedestrianCounterPage() {
             videoCount={videoCount}
         />
 
-        <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle} canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType} />
+        <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle}
+                     canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType}/>
 
         <ReviewSidebar
             isOpen={showReviewSidebar}
@@ -592,11 +632,24 @@ export default function PedestrianCounterPage() {
                   setSavedStateForRestore(null)
                   handleClearVideo()
                 }}
-                savedData={{ currentTime: savedStateForRestore.currentTime, duration: savedStateForRestore.duration, totalCounts: savedStateForRestore.entries.length, intersectionCount: 0, lastSaved: savedStateForRestore.lastSaved }}
+                savedData={{
+                  currentTime: savedStateForRestore.currentTime,
+                  duration: savedStateForRestore.duration,
+                  totalCounts: savedStateForRestore.entries.length,
+                  intersectionCount: 0,
+                  lastSaved: savedStateForRestore.lastSaved
+                }}
             />
         )}
 
-        <input type="file" id="video-upload-hidden" multiple accept="video/mp4, video/webm, video/ogg" style={{display: "none"}} onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length > 0) handleFilesSelect(files); e.target.value = "" }} />
+        <input type="file" id="video-upload-hidden" multiple accept="video/mp4, video/webm, video/ogg"
+               style={{display: "none"}} onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length > 0) handleFilesSelect(files);
+          e.target.value = ""
+        }}/>
       </>
   )
 }
+
+export default CounterPage

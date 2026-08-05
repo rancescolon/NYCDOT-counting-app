@@ -42,3 +42,33 @@ export interface SavedState {
     currentVideoIndex: number
     videoMetadata: Record<number, VideoMetadata>
 }
+
+
+
+export type Borough = 'Manhattan' | 'Bronx' | 'Brooklyn' | 'Queens' | 'Staten Island';
+export type Team = 'School Safety' | 'Vision Zero' | 'Research' | 'Engineering';
+export type StreetType = 'One Way' | 'Two Way';
+export type Direction = 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound';
+export type WeatherCondition = 'Clear' | 'Cloudy' | 'Wet Pavement';
+
+export interface SpeedStudyFormState {
+    streetName: string;
+    fromStreet: string;
+    toStreet: string;
+    borough: Borough;
+    observer: string;
+    team: Team;
+    speedLimit: number;
+    streetType: StreetType;
+    direction: Direction;
+    movingLanes: number;
+    parkingLanes: number;
+    isTruckRoute: boolean;
+    isBusRoute: boolean;
+    busLine: string;
+    weather: WeatherCondition;
+    isSnowing: boolean;
+    isRaining: boolean;
+    startTimeSlot: string;
+    notes: string;
+}

@@ -22,12 +22,20 @@ export default function RootLayout({
             DOT Counting App
           </Link>
           <nav>
-            <ul className="flex space-x-4">
-              <Link href="/counter" className="hover:underline">
-                Curb cut
-              </Link>
+            <ul className="flex items-center gap-6">
+              <li>
+                <Link href="/counter" className="hover:text-gray-300 transition-colors">
+                  Curb Cut
+                </Link>
+              </li>
 
+              <li>
+                <Link href="/speedStudy" className="hover:text-gray-300 transition-colors">
+                  Speed Study
+                </Link>
+              </li>
             </ul>
+
           </nav>
         </header>
         {children}

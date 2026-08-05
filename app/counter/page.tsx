@@ -1,5 +1,5 @@
-import PedestrianCounterPage from "@/components/pedestrian-counter-page"
+import CounterComponent from "@/components/counter-page"
 
 export default function CounterPage() {
-  return <PedestrianCounterPage />
+  return <CounterComponent />
 }
