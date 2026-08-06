@@ -6,7 +6,6 @@ export const ReminderCard: React.FC = () => {
     return (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-24">
             <div className="flex items-center gap-2 mb-3">
-                <span className="text-blue-600 text-lg">ℹ</span>
                 <h3 className="text-base font-bold text-blue-900">Important Reminder</h3>
             </div>
             <p className="text-sm font-medium text-blue-800 mb-2">

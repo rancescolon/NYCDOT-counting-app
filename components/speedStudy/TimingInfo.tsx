@@ -1,19 +1,72 @@
 // components/speed-study/TimingInfo.tsx
+// if change this file if add other teams
 
-import React from 'react';
-import { SpeedStudyFormState } from '@/lib/types';
+
+import React, { useEffect } from 'react';
+import { SpeedStudyFormState, Team } from '@/lib/types';
+import Image from "next/image";
 
 interface Props {
     data: SpeedStudyFormState;
     onChange: (updates: Partial<SpeedStudyFormState>) => void;
+    onValidationChange?: (isValid: boolean) => void;
 }
 
-const TIME_SLOTS = ['10:00 AM', '02:00 PM'];
+// Extensible team schedule rules configuration
+interface TeamRule {
+    isAllowed: (date: Date) => boolean;
+    description: string;
+}
 
-export const TimingInfo: React.FC<Props> = ({ data, onChange }) => {
-    // Compute calculated end time based on street type (+2 hours for One Way, +1 hour for Two Way)
+const TEAM_RULES: Record<Team, TeamRule> = {
+    'School Safety': {
+        isAllowed: (date: Date) => {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const totalMinutes = hours * 60 + minutes;
+            return totalMinutes >= 0 && totalMinutes <= 1400; // 10:00 AM (600 mins) and 2:00 PM (840 mins)
+        },
+        description: 'School Safety Study hours are 10:00 AM - 2:00 PM.',
+    },
+    'Vision Zero': {
+        isAllowed: () => true, // Add specific rules here later if needed
+        description: 'Allowed anytime.',
+    },
+    'Research': {
+        isAllowed: () => true,
+        description: 'Allowed anytime.',
+    },
+    'Engineering': {
+        isAllowed: () => true,
+        description: 'Allowed anytime.',
+    },
+};
+
+export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange }) => {
+    useEffect(() => {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        onChange({ startTimeSlot: timeString });
+    }, []);
+
+    const now = new Date();
+    const rule = TEAM_RULES[data.team] || { isAllowed: () => true, description: '' };
+    const isTimeValid = rule.isAllowed(now);
+
+    // Notify parent component of time validation status to block/allow starting study
+    useEffect(() => {
+        if (onValidationChange) {
+            onValidationChange(isTimeValid);
+        }
+    }, [isTimeValid, data.team, onValidationChange]);
+
+    // Compute calculated end time based on auto-logged start time and street type (+2 hours One Way, +1 hour Two Way)
     const calculateEndTime = () => {
+        if (!data.startTimeSlot) return '--';
+
         const [time, modifier] = data.startTimeSlot.split(' ');
+        if (!time) return '--';
+
         let [hours, minutes] = time.split(':').map(Number);
         if (modifier === 'PM' && hours < 12) hours += 12;
         if (modifier === 'AM' && hours === 12) hours = 0;
@@ -28,17 +81,18 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange }) => {
         return `${displayHours}:${formattedMinutes} ${newModifier}`;
     };
 
-    const currentDateStr = new Date().toLocaleDateString('en-US', {
+    const currentDateStr = now.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
     });
 
+    const currentTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'});
+
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-2 h-6 bg-blue-600 rounded-full"></span>
-                Timing & Schedule
+                Timing
             </h2>
 
             <div className="space-y-4">
@@ -50,28 +104,38 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange }) => {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Time Slot (Team Dependent)</label>
-                    <select
-                        value={data.startTimeSlot}
-                        onChange={(e) => onChange({ startTimeSlot: e.target.value })}
-                        className="w-full text-base px-4 py-3 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none font-semibold text-blue-600"
-                    >
-                        {TIME_SLOTS.map((slot) => (
-                            <option key={slot} value={slot}>{slot}</option>
-                        ))}
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700">Time</label>
+
+                    <div className="text-base font-semibold px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 flex justify-between items-center">
+                        {currentTimeStr}
+                    </div>
                 </div>
+
+                {!isTimeValid && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                        <div className="relative w-16 h-16 flex-shrink-0 mt-0.5">
+                            <Image
+                                src="/caution.png"
+                                alt="Caution"
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-red-800">Outside Allowed Study Window</p>
+                            <p className="text-s text-red-700 mt-0.5">{rule.description}</p>
+                        </div>
+                    </div>
+                )}
 
                 <div>
                     <div className="flex justify-between items-center mb-1">
-                        <label className="block text-sm font-medium text-gray-700">Estimated End Time</label>
-                        <span className="text-xs text-gray-500 font-medium">Auto-calculated</span>
+                        <label className="">Estimated End Time</label>
                     </div>
                     <div className="text-base font-semibold px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 flex justify-between items-center">
                         <span>{calculateEndTime()}</span>
-                        <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
-              {data.streetType === 'One Way' ? '2 Hours Duration' : '1 Hour Duration'} (or 100 vehicles)
-            </span>
+                        <span className="block text-sm font-medium text-gray-700">(Or 100 vehicles)</span>
+
                     </div>
                 </div>
             </div>

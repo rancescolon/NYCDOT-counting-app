@@ -12,7 +12,7 @@ export const Notes: React.FC<Props> = ({ data, onChange }) => {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
             <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-2 h-6 bg-blue-600 rounded-full"></span>
+                
                 Additional Notes
             </h2>
 

@@ -1,6 +1,6 @@
 // app/speed-study/page.tsx
 
- 'use client'
+'use client'
 
 import React, { useState } from 'react';
 import { SpeedStudyFormState } from '@/lib/types'
@@ -12,8 +12,10 @@ import { TimingInfo } from '@/components/speedStudy/TimingInfo';
 import { Notes } from '@/components/speedStudy/Notes';
 import { ReminderCard } from '@/components/speedStudy/ReminderCard';
 import { StickyFooter } from '@/components/speedStudy/StickyFooter';
+import { ActiveStudyView } from '@/components/speedStudy/ActiveStudyView';
 
 export default function SpeedStudyPage() {
+    const [isStudyActive, setIsStudyActive] = useState(false);
     const [formState, setFormState] = useState<SpeedStudyFormState>({
         streetName: '',
         fromStreet: '',
@@ -35,6 +37,8 @@ export default function SpeedStudyPage() {
         startTimeSlot: '10:00 AM',
         notes: '',
     });
+    const [isTimeValid, setIsTimeValid] = useState(true);
+
 
     const handleUpdate = (updates: Partial<SpeedStudyFormState>) => {
         setFormState((prev) => ({ ...prev, ...updates }));
@@ -42,11 +46,14 @@ export default function SpeedStudyPage() {
 
     const isRainOrSnow = formState.isRaining || formState.isSnowing;
 
-    const handleStartStudy = () => {
-        if (isRainOrSnow) return;
-        // Transition to active logging view or store to context/backend
-        alert('Study started successfully! Transitioning to vehicle speed logging interface...');
-    };
+    if (isStudyActive) {
+        return (
+            <ActiveStudyView
+                studyData={formState}
+                onEndStudy={() => setIsStudyActive(false)}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 pb-12">
@@ -54,17 +61,8 @@ export default function SpeedStudyPage() {
             <header className="bg-white border-b border-gray-200 sticky top-0 z-40 px-4 py-3.5 shadow-sm">
                 <div className="max-w-md mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => window.history.back()}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition"
-                        >
-                            ←
-                        </button>
-                        <h1 className="text-lg font-bold text-gray-900">Speed Study Setup</h1>
+                        <h1 className="text-lg font-bold text-gray-900 ">Speed Study Setup</h1>
                     </div>
-                    <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-            Step 1 of 2
-          </span>
                 </div>
             </header>
 
@@ -74,13 +72,15 @@ export default function SpeedStudyPage() {
                 <StudyInfo data={formState} onChange={handleUpdate} />
                 <RoadInfo data={formState} onChange={handleUpdate} />
                 <WeatherInfo data={formState} onChange={handleUpdate} />
-                <TimingInfo data={formState} onChange={handleUpdate} />
+                <TimingInfo data={formState} onChange={handleUpdate} onValidationChange={setIsTimeValid}/>
                 <Notes data={formState} onChange={handleUpdate} />
                 <ReminderCard />
             </main>
 
-            {/* Sticky Bottom Action */}
-            <StickyFooter disabled={isRainOrSnow} onStartStudy={handleStartStudy} />
+            <StickyFooter
+                disabled={isRainOrSnow || !isTimeValid}
+                onStartStudy={() => setIsStudyActive(true)}
+            />
         </div>
     );
 }
