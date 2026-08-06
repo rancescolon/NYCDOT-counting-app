@@ -68,7 +68,6 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     // Export both View 1 (Metadata) and View 2 (Speeds) to a true Excel (.xlsx) file using xlsx-js-style
     const handleExportAndEnd = () => {
         const wsData: (string | number)[][] = [];
-
         // --- SECTION 1: Study Metadata (View 1) ---
         wsData.push(['Street Name', studyData.streetName || 'Unnamed']);
         wsData.push(['Observer', studyData.observer]);
