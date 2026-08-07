@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { SpeedStudyFormState } from '@/lib/types';
+import { getAssetPath } from '@/lib/utils'; // Ensure this points to where your utility lives
 
 interface Props {
     data: SpeedStudyFormState;
@@ -10,11 +11,11 @@ interface Props {
 }
 
 const WEATHER_OPTIONS = [
-    { label: 'Sunny', icon: '/sunny.png', isRain: false, isSnow: false },
-    { label: 'Cloudy', icon: '/cloudy.png', isRain: false, isSnow: false },
-    { label: 'Rainy', icon: '/rainy.png', isRain: false, isSnow: false },
-    { label: 'Heavy Rain', icon: '/rain.png', isRain: true, isSnow: false },
-    { label: 'Snowing', icon: '/snowy.png', isRain: false, isSnow: true },
+    { label: 'Sunny', icon: getAssetPath('/sunny.png'), isRain: false, isSnow: false },
+    { label: 'Cloudy', icon: getAssetPath('/cloudy.png'), isRain: false, isSnow: false },
+    { label: 'Rainy', icon: getAssetPath('/rainy.png'), isRain: false, isSnow: false },
+    { label: 'Heavy Rain', icon: getAssetPath('/rain.png'), isRain: true, isSnow: false },
+    { label: 'Snowing', icon: getAssetPath('/snowy.png'), isRain: false, isSnow: true },
 ];
 
 export const WeatherInfo: React.FC<Props> = ({ data, onChange }) => {
