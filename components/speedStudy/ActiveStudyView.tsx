@@ -59,10 +59,10 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         setRecordedSpeeds([newRecord, ...recordedSpeeds]);
         setCurrentInput('');
 
-        // Re-focus input immediately for the next entry
-        setTimeout(() => {
+        // Re-focus input immediately and keep virtual keyboard up
+        requestAnimationFrame(() => {
             inputRef.current?.focus();
-        }, 50);
+        });
     };
 
     // Export both View 1 (Metadata) and View 2 (Speeds) to a true Excel (.xlsx) file using xlsx-js-style
@@ -93,8 +93,11 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Speed Study Report');
 
-        // Trigger native Excel file download (.xlsx)
-        const fileName = `speed_study_${studyData.streetName || 'data'}_${Date.now()}.xlsx`;
+        // Trigger native Excel file download (.xlsx) formatted as streetName_date
+        const sanitizedStreet = (studyData.streetName || 'Unnamed_Street').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const currentDate = new Date().toISOString().split('T')[0];
+        const fileName = `${sanitizedStreet}_${currentDate}.xlsx`;
+
         XLSX.writeFile(workbook, fileName);
 
         onEndStudy(recordedSpeeds);
@@ -172,7 +175,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                                 placeholder="-- "
                                 className="w-full text-2xl font-extrabold text-gray-900 bg-transparent outline-none tracking-tight"
                             />
-                            <span className="text-lg font-bold text-gray-400 ml-1">MPH</span>
+                            <span className="text-lg font-bold text-gray-400 ml-1 self-center">MPH</span>
                         </div>
                     </div>
 
@@ -191,7 +194,6 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                     </div>
                 </form>
             </div>
-
         </div>
     );
 };
