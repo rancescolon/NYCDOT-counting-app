@@ -59,7 +59,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         setRecordedSpeeds([newRecord, ...recordedSpeeds]);
         setCurrentInput('');
 
-        // Re-focus input immediately and keep virtual keyboard up
+        // Ensure input stays focused for the next entry
         requestAnimationFrame(() => {
             inputRef.current?.focus();
         });
@@ -166,6 +166,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                                 type="number"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
+                                enterKeyHint="done"
                                 value={currentInput}
                                 onChange={(e) => {
                                     if (e.target.value.length <= 3) {
@@ -183,6 +184,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                         <button
                             type="submit"
                             disabled={!currentInput}
+                            onMouseDown={(e) => e.preventDefault()}
                             className={`px-5 py-3 rounded-xl font-bold text-sm transition shadow-sm ${
                                 currentInput
                                     ? 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
