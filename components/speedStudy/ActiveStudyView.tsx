@@ -19,6 +19,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     const [currentInput, setCurrentInput] = useState<string>('');
     const [recordedSpeeds, setRecordedSpeeds] = useState<SpeedRecord[]>([]);
     const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+    const [studyStartTime, setStudyStartTime] = useState<string | null>(null);
 
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -30,13 +31,13 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         return () => clearTimeout(focusTimer);
     }, []);
 
-    // Timer for tracking study duration
     useEffect(() => {
+        if (recordedSpeeds.length === 0) return;
         const timer = setInterval(() => {
             setElapsedSeconds((prev) => prev + 1);
         }, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [recordedSpeeds.length]);
 
     const formatTime = (totalSeconds: number) => {
         const mins = Math.floor(totalSeconds / 60);
@@ -49,17 +50,22 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         const speedNum = parseInt(currentInput, 10);
         if (isNaN(speedNum) || speedNum <= 0) return;
 
+        const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Lock in the official start time on the very first entry
+        if (recordedSpeeds.length === 0) {
+            setStudyStartTime(timestampStr);
+        }
+
         const newRecord: SpeedRecord = {
             id: Math.random().toString(36).substring(2, 9),
             speed: speedNum,
-            // Format timestamp without seconds (e.g., "04:17 PM")
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: timestampStr,
         };
 
         setRecordedSpeeds([newRecord, ...recordedSpeeds]);
         setCurrentInput('');
 
-        // Ensure input stays focused for the next entry
         requestAnimationFrame(() => {
             inputRef.current?.focus();
         });
@@ -76,7 +82,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         wsData.push(['Street Type', studyData.streetType]);
         wsData.push(['Direction', studyData.direction]);
         wsData.push(['Weather', studyData.weather]);
-        wsData.push(['Start Time Slot', studyData.startTimeSlot]);
+        wsData.push(['Start Time Slot', studyStartTime || studyData.startTimeSlot]);
         wsData.push(['Total Vehicles Logged', recordedSpeeds.length]);
         wsData.push(['Elapsed Time', formatTime(elapsedSeconds)]);
         wsData.push([]); // Empty spacer row

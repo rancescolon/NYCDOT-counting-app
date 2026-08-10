@@ -1,5 +1,5 @@
 // components/speed-study/StudyInfo.tsx
-// Change this file if add more ppl and/or other teams
+// Change this file if add more ppl and/or other teams aswell as TEAM_RULES in TimingInfo.tsx
 
 import React from 'react';
 import { Direction, SpeedStudyFormState, StreetType, Team } from '@/lib/types';
@@ -12,7 +12,7 @@ interface Props {
 
 // Easily add more teams or observers here as needed
 const TEAMS: Team[] = ['School Safety', 'Vision Zero', 'Research', 'Engineering'];
-const OBSERVERS = ['R. Colon', 'J. Smith', 'A. Davis']; // Add more personnel here
+const OBSERVERS = ['R. Colon', 'F. Castro','N, Carey']; // Add more ppl here
 const DIRECTIONS: Direction[] = ['Northbound', 'Southbound', 'Eastbound', 'Westbound'];
 const SPEED_LIMITS = [15, 20, 25, 30, 35, 40, 45];
 

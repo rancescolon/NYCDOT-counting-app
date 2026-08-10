@@ -1,6 +1,4 @@
 // components/speed-study/TimingInfo.tsx
-// if change this file if add other teams
-
 
 import React, { useEffect } from 'react';
 import { SpeedStudyFormState, Team } from '@/lib/types';
@@ -12,7 +10,6 @@ interface Props {
     onValidationChange?: (isValid: boolean) => void;
 }
 
-// Extensible team schedule rules configuration
 interface TeamRule {
     isAllowed: (date: Date) => boolean;
     description: string;
@@ -29,8 +26,8 @@ const TEAM_RULES: Record<Team, TeamRule> = {
         description: 'School Safety Study hours are 10:00 AM - 2:00 PM.',
     },
     'Vision Zero': {
-        isAllowed: () => true, // Add specific rules here later if needed
-        description: 'Allowed anytime.',
+        isAllowed: () => true,
+        description: 'Allowed anytime.',  // Add specific rules here later if needed
     },
     'Research': {
         isAllowed: () => true,
@@ -44,23 +41,26 @@ const TEAM_RULES: Record<Team, TeamRule> = {
 
 export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange }) => {
     useEffect(() => {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        onChange({ startTimeSlot: timeString });
-    }, []);
+        const updateStartTime = () => {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            onChange({ startTimeSlot: timeString });
+        };
+        updateStartTime();
+        const interval = setInterval(updateStartTime, 1000);
+        return () => clearInterval(interval);
+    }, [onChange]);
 
     const now = new Date();
     const rule = TEAM_RULES[data.team] || { isAllowed: () => true, description: '' };
     const isTimeValid = rule.isAllowed(now);
 
-    // Notify parent component of time validation status to block/allow starting study
     useEffect(() => {
         if (onValidationChange) {
             onValidationChange(isTimeValid);
         }
     }, [isTimeValid, data.team, onValidationChange]);
 
-    // Compute calculated end time based on auto-logged start time and street type (+2 hours One Way, +1 hour Two Way)
     const calculateEndTime = () => {
         if (!data.startTimeSlot) return '--';
 
@@ -105,7 +105,6 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Time</label>
-
                     <div className="text-base font-semibold px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 flex justify-between items-center">
                         {currentTimeStr}
                     </div>
@@ -135,7 +134,6 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange
                     <div className="text-base font-semibold px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 flex justify-between items-center">
                         <span>{calculateEndTime()}</span>
                         <span className="block text-sm font-medium text-gray-700">(Or 100 vehicles)</span>
-
                     </div>
                 </div>
             </div>

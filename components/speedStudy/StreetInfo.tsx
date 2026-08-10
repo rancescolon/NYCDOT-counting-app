@@ -25,7 +25,7 @@ export const StreetInfo: React.FC<Props> = ({ data, onChange }) => {
                         type="text"
                         value={data.streetName}
                         onChange={(e) => onChange({ streetName: e.target.value })}
-                        placeholder="e.g., Grand Concourse"
+                        placeholder="Ex: Grand Concourse"
                         className="w-full text-base px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
                     />
                 </div>
@@ -37,7 +37,7 @@ export const StreetInfo: React.FC<Props> = ({ data, onChange }) => {
                             type="text"
                             value={data.fromStreet}
                             onChange={(e) => onChange({ fromStreet: e.target.value })}
-                            placeholder="e.g., 161st St"
+                            placeholder="Ex: 161th St"
                             className="w-full text-base px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
                         />
                     </div>
@@ -47,7 +47,7 @@ export const StreetInfo: React.FC<Props> = ({ data, onChange }) => {
                             type="text"
                             value={data.toStreet}
                             onChange={(e) => onChange({ toStreet: e.target.value })}
-                            placeholder="e.g., 160th St"
+                            placeholder="Ex: 160th St"
                             className="w-full text-base px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
                         />
                     </div>

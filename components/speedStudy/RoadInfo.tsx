@@ -101,7 +101,7 @@ export const RoadInfo: React.FC<Props> = ({ data, onChange }) => {
                             type="text"
                             value={data.busLine}
                             onChange={(e) => onChange({ busLine: e.target.value })}
-                            placeholder="e.g., Bx41"
+                            placeholder="ex: Bx41"
                             className="w-full text-base px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none bg-white"
                         />
                     </div>

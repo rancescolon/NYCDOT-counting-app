@@ -14,7 +14,7 @@ export default function Navbar() {
         <header className="bg-black text-white p-4 relative z-50">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
                 <Link href="/" className="text-xl font-bold">
-                    DOT Counting App
+                    DOT Tool App
                 </Link>
 
                 {/* Desktop Navigation (Identical to original) */}
@@ -22,7 +22,7 @@ export default function Navbar() {
                     <ul className="flex items-center gap-6">
                         <li>
                             <Link href="/counter" className="hover:text-gray-300 transition-colors">
-                                Curb Cut
+                                Curb Cuts
                             </Link>
                         </li>
                         <li>
