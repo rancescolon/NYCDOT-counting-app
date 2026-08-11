@@ -3,7 +3,7 @@
 import React from "react"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
-import { CountEntry } from "@/lib/types" // Import from central types
+import { CountEntry } from "@/lib/types/types" // Import from central types
 
 interface ControlsPanelProps {
     lastEntry?: CountEntry

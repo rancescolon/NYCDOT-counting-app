@@ -1,5 +1,5 @@
 // lib/export-utils.ts
-import { CountEntry } from "@/lib/types";
+import { CountEntry } from "@/lib/types/types";
 
 export const exportVehicleData = (entries: CountEntry[]) => {
     const categories = ['cut_through', 'parking', 'driving'];

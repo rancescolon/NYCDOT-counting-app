@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Play, Pause, HelpCircle, Undo } from "lucide-react"
 import { ControlsPanel } from "./controls-panel"
-import { CountEntry } from "@/lib/types"
+import { CountEntry } from "@/lib/types/types"
 
 interface VideoControlsProps {
     videoRef: React.RefObject<HTMLVideoElement>

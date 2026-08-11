@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useCallback } from "react"
-import { Stroke, Point } from "@/lib/types"
+import { Stroke, Point } from "@/lib/types/types"
 
 interface VideoOverlayProps {
   isDrawingMode: boolean

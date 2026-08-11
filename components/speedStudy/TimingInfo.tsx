@@ -1,7 +1,7 @@
 // components/speed-study/TimingInfo.tsx
 
 import React, { useEffect } from 'react';
-import { SpeedStudyFormState, Team } from '@/lib/types';
+import { SpeedStudyFormState, Team } from '@/lib/types/types';
 import Image from "next/image";
 
 interface Props {

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { SpeedStudyFormState } from '@/lib/types';
+import { SpeedStudyFormState } from '@/lib/types/types';
 import { getAssetPath } from '@/lib/utils'; // Ensure this points to where your utility lives
 
 interface Props {

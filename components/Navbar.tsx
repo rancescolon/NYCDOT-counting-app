@@ -30,6 +30,11 @@ export default function Navbar() {
                                 Speed Study
                             </Link>
                         </li>
+                        <li>
+                            <Link href="/pedestrianCounting" className="hover:text-gray-300 transition-colors">
+                                Pedestrian Counting
+                            </Link>
+                        </li>
                     </ul>
                 </nav>
 

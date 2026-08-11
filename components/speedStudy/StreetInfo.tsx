@@ -1,7 +1,7 @@
 // components/speed-study/StreetInfo.tsx
 
 import React from 'react';
-import { Borough, SpeedStudyFormState }  from '@/lib/types';
+import { Borough, SpeedStudyFormState }  from '@/lib/types/types';
 
 interface Props {
     data: SpeedStudyFormState;

@@ -2,7 +2,7 @@
 // Change this file if add more ppl and/or other teams aswell as TEAM_RULES in TimingInfo.tsx
 
 import React from 'react';
-import { Direction, SpeedStudyFormState, StreetType, Team } from '@/lib/types';
+import { Direction, SpeedStudyFormState, StreetType, Team } from '@/lib/types/types';
 import { CustomDropdown } from '@/components/ui/CustomDropdown';
 
 interface Props {

@@ -3,7 +3,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import { SpeedStudyFormState } from '@/lib/types'
+import { SpeedStudyFormState } from '@/lib/types/types'
 import { StreetInfo } from '@/components/speedStudy/StreetInfo';
 import { StudyInfo } from '@/components/speedStudy/StudyInfo';
 import { RoadInfo } from '@/components/speedStudy/RoadInfo';

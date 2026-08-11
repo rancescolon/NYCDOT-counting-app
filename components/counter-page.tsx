@@ -6,7 +6,7 @@ import VideoPlayer from "@/components/video-player"
 import VideoControls from "@/components/video-controls"
 import { VideoOverlay } from "@/components/video-overlay"
 import { useVehicleInput } from "@/hooks/use-vehicle-input"
-import { CountEntry, Stroke, SavedState, VideoMetadata, VehicleCategory, VehicleType } from "@/lib/types"
+import { CountEntry, Stroke, SavedState, VideoMetadata, VehicleCategory, VehicleType } from "@/lib/types/types"
 import * as XLSX from "xlsx-js-style"
 
 // Lazy loaders (ExportProgressModal removed)

@@ -1,8 +1,8 @@
 // components/speed-study/ActiveStudyView.tsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { SpeedStudyFormState } from '@/lib/types';
-import * as XLSX from 'xlsx-js-style';
+import { SpeedStudyFormState } from '@/lib/types/types';
+
 
 interface SpeedRecord {
     id: string;

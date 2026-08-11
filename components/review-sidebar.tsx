@@ -2,7 +2,7 @@
 
 import { X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CountEntry, VehicleCategory, VehicleType } from "@/lib/types"
+import { CountEntry, VehicleCategory, VehicleType } from "@/lib/types/types"
 
 interface ReviewSidebarProps {
     isOpen: boolean
