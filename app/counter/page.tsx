@@ -1,4 +1,4 @@
-import CounterComponent from "@/components/counter-page"
+import CounterComponent from "@/components/curbCut-page"
 
 export default function CounterPage() {
   return <CounterComponent />

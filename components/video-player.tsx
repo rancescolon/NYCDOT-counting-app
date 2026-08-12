@@ -1,3 +1,4 @@
+//video-player.tsx
 "use client"
 
 import React, { useState, useImperativeHandle, useCallback } from "react"

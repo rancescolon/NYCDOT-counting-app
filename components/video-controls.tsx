@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Play, Pause, HelpCircle, Undo } from "lucide-react"
 import { ControlsPanel } from "./controls-panel"
+import { VideoToolConfig } from "@/lib/config/video-tool.config"
 import { CountEntry } from "@/lib/types/types"
 
 interface VideoControlsProps {
@@ -15,23 +16,41 @@ interface VideoControlsProps {
     onTogglePlay: () => void
     onChangePlaybackRate: (rate: number) => void
     isVideoLoaded: boolean
-    onUndo: () => void
-    onFinish: () => void
-    onClearVideo: () => void
-    canUndo: boolean
+    config: VideoToolConfig
+    onUndo?: () => void
+    onFinish?: () => void
+    onClearVideo?: () => void
+    canUndo?: boolean
     onShowHelp?: () => void
-    totalCount: number
+    totalCount?: number
     lastEntry?: CountEntry
-    isDrawingMode: boolean
-    onToggleDrawingMode: () => void
-    onClearStrokes: () => void
-    onExport: () => void
+    isDrawingMode?: boolean
+    onToggleDrawingMode?: () => void
+    onClearStrokes?: () => void
+    onExport?: () => void
+    customActions?: React.ReactNode
 }
 
 export default function VideoControls({
-                                          videoRef, isPlaying, playbackRate, onTogglePlay, onChangePlaybackRate,
-                                          isVideoLoaded, onUndo, canUndo, onFinish, onShowHelp, totalCount,
-                                          lastEntry, isDrawingMode, onToggleDrawingMode, onClearStrokes,
+                                          videoRef,
+                                          isPlaying,
+                                          playbackRate,
+                                          onTogglePlay,
+                                          onChangePlaybackRate,
+                                          isVideoLoaded,
+                                          config,
+                                          onUndo,
+                                          canUndo = false,
+                                          onShowHelp,
+                                          totalCount,
+                                          lastEntry,
+                                          isDrawingMode = false,
+                                          onToggleDrawingMode,
+                                          onClearStrokes,
+                                          onFinish,
+                                          onClearVideo,
+                                          onExport,
+                                          customActions
                                       }: VideoControlsProps) {
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -39,7 +58,6 @@ export default function VideoControls({
 
     const scrubBarRef = useRef<HTMLDivElement>(null)
 
-    // Internalized time tracking
     useEffect(() => {
         const video = videoRef.current
         if (!video) return
@@ -105,78 +123,93 @@ export default function VideoControls({
     }, [isScrubbing, handleScrub, handleScrubEnd])
 
     const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0
+    const resolvedExportHandler = onFinish ?? onExport ?? (() => {})
 
     return (
         <Card className="shadow-lg rounded-t-none rounded-b-lg border-t-0">
             <CardContent className="p-4 flex flex-col gap-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700">
-                <div
-                    className="relative w-full h-2 bg-slate-300 dark:bg-slate-600 rounded-full cursor-pointer group transition-all duration-200 hover:h-3"
-                    ref={scrubBarRef}
-                    onMouseDown={handleScrubStart}
-                >
-                    <div className="absolute h-full bg-primary rounded-full transition-all duration-100 ease-linear" style={{ width: `${progressPercentage}%` }} />
-                    <div
-                        className="absolute top-1/2 w-4 h-4 bg-primary rounded-full shadow-md transition-all duration-200 group-hover:scale-125"
-                        style={{
-                            left: `${progressPercentage}%`,
-                            transform: `translateX(-50%) translateY(-50%)`,
-                            boxShadow: isScrubbing ? "0 0 12px rgba(59, 130, 246, 0.5)" : undefined,
-                        }}
-                    />
-                </div>
+                {config.features.scrubBar && (
+                    <>
+                        <div
+                            className="relative w-full h-2 bg-slate-300 dark:bg-slate-600 rounded-full cursor-pointer group transition-all duration-200 hover:h-3"
+                            ref={scrubBarRef}
+                            onMouseDown={handleScrubStart}
+                        >
+                            <div className="absolute h-full bg-primary rounded-full transition-all duration-100 ease-linear" style={{ width: `${progressPercentage}%` }} />
+                            <div
+                                className="absolute top-1/2 w-4 h-4 bg-primary rounded-full shadow-md transition-all duration-200 group-hover:scale-125"
+                                style={{
+                                    left: `${progressPercentage}%`,
+                                    transform: `translateX(-50%) translateY(-50%)`,
+                                    boxShadow: isScrubbing ? "0 0 12px rgba(59, 130, 246, 0.5)" : undefined,
+                                }}
+                            />
+                        </div>
 
-                <div className="flex justify-between text-sm font-medium text-slate-700 dark:text-slate-300 tabular-nums">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
-                </div>
+                        <div className="flex justify-between text-sm font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                            <span>{formatTime(currentTime)}</span>
+                            <span>{formatTime(duration)}</span>
+                        </div>
+                    </>
+                )}
 
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1">
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            onClick={onTogglePlay}
-                            disabled={!isVideoLoaded}
-                            className="flex-1 h-12 flex items-center justify-center font-semibold text-base"
-                        >
-                            {isPlaying ? (
-                                <><Pause className="h-5 w-5 mr-3" /> Pause</>
-                            ) : (
-                                <><Play className="h-5 w-5 mr-3" /> Play</>
-                            )}
-                        </Button>
+                        {config.features.playbackControls && (
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={onTogglePlay}
+                                disabled={!isVideoLoaded}
+                                className="flex-1 h-12 flex items-center justify-center font-semibold text-base"
+                            >
+                                {isPlaying ? (
+                                    <><Pause className="h-5 w-5 mr-3" /> Pause</>
+                                ) : (
+                                    <><Play className="h-5 w-5 mr-3" /> Play</>
+                                )}
+                            </Button>
+                        )}
 
-                        <div className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm h-12 px-4 gap-3">
-                            <span className="text-sm font-semibold min-w-[50px] text-center">
-                                {playbackRate.toFixed(2)}x
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                                <Button variant="ghost" size="sm" onClick={() => onChangePlaybackRate(Math.max(0.25, playbackRate - 0.25))} disabled={!isVideoLoaded} className="h-8 w-8 text-lg font-bold">
-                                    -
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => onChangePlaybackRate(playbackRate + 0.25)} disabled={!isVideoLoaded} className="h-8 w-8 text-lg font-bold">
-                                    +
-                                </Button>
+                        {config.features.speedAdjustment && (
+                            <div className="flex items-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm h-12 px-4 gap-3">
+                                <span className="text-sm font-semibold min-w-[50px] text-center">
+                                    {playbackRate.toFixed(2)}x
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    <Button variant="ghost" size="sm" onClick={() => onChangePlaybackRate(Math.max(0.25, playbackRate - 0.25))} disabled={!isVideoLoaded} className="h-8 w-8 text-lg font-bold">
+                                        -
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => onChangePlaybackRate(playbackRate + 0.25)} disabled={!isVideoLoaded} className="h-8 w-8 text-lg font-bold">
+                                        +
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <Button variant="outline" size="icon" onClick={onShowHelp} className="w-12 h-12">
-                            <HelpCircle className="h-5 w-5" />
-                        </Button>
+                        {config.features.help && onShowHelp && (
+                            <Button variant="outline" size="icon" onClick={onShowHelp} className="w-12 h-12">
+                                <HelpCircle className="h-5 w-5" />
+                            </Button>
+                        )}
 
-                        <Button variant="outline" size="icon" onClick={onUndo} disabled={!canUndo} className="w-12 h-12">
-                            <Undo className="h-5 w-5" />
-                        </Button>
+                        {config.features.undoRedo && onUndo && (
+                            <Button variant="outline" size="icon" onClick={onUndo} disabled={!canUndo} className="w-12 h-12">
+                                <Undo className="h-5 w-5" />
+                            </Button>
+                        )}
                     </div>
 
                     <div className="flex items-center flex-1 justify-end w-full">
                         <ControlsPanel
+                            totalCount={totalCount}
                             lastEntry={lastEntry}
                             isDrawingMode={isDrawingMode}
-                            onToggleDrawingMode={onToggleDrawingMode}
-                            onClearStrokes={onClearStrokes}
-                            onExport={onFinish}
-                            totalCount={totalCount}
+                            onToggleDrawingMode={onToggleDrawingMode || (() => {})}
+                            onClearStrokes={onClearStrokes || (() => {})}
+                            onExport={resolvedExportHandler}
+                            config={config}
+                            customActions={customActions}
                         />
                     </div>
                 </div>

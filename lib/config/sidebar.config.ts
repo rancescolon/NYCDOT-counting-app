@@ -1,31 +1,23 @@
-export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
-export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
-export type SidebarMode = 'vehicle' | 'pedestrian'
-
 export interface ShortcutItem {
     keys: string[]
     description: string
     color: string
-    direction?: 'Eastbound' | 'Westbound' | 'Northbound' | 'Southbound' | null
     actionKey?: string
 }
 
 export interface QuickTipContext {
-    intersectionsSet?: boolean
     canUndo?: boolean
-}
-
-export interface QuickTipItem {
-    text: string
-    link?: { url: string; label: string }
 }
 
 export interface SidebarConfig {
     shortcuts: ShortcutItem[]
-    quickTips: (context: QuickTipContext) => QuickTipItem[]
+    quickTips: (context: QuickTipContext) => Array<{
+        text: string
+        link?: { label: string; url: string }
+    }>
 }
 
-export const HelpSidebarConfig: Record<SidebarMode, SidebarConfig> = {
+export const HelpSidebarConfig: Record<string, SidebarConfig> = {
     vehicle: {
         shortcuts: [
             { keys: ["1"], description: "Mark Sidewalk Cut Through", color: "bg-blue-500", actionKey: "1" },
@@ -56,13 +48,4 @@ export const HelpSidebarConfig: Record<SidebarMode, SidebarConfig> = {
             },
         ],
     },
-    pedestrian: {
-        shortcuts: [
-            { keys: ["Space"], description: "Log Pedestrian", color: "bg-blue-500" },
-            { keys: ["C"], description: "Clear Count", color: "bg-red-500" },
-        ],
-        quickTips: () => [
-            { text: "Press Space to quickly tally pedestrians crossing the zone." }
-        ]
-    }
 }

@@ -5,7 +5,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Upload, Clock, Users, MapPin, X, FileVideo, Keyboard } from "lucide-react"
+import { Upload, Clock, Users, X, FileVideo } from "lucide-react"
 
 interface VideoRestorePromptProps {
   isOpen: boolean
@@ -50,12 +50,12 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
   }
 
   const handleFileSelect = useCallback(
-    (file: File | null) => {
-      if (file && file.type.startsWith("video/")) {
-        onVideoRestore(file)
-      }
-    },
-    [onVideoRestore],
+      (file: File | null) => {
+        if (file && file.type.startsWith("video/")) {
+          onVideoRestore(file)
+        }
+      },
+      [onVideoRestore],
   )
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -81,24 +81,24 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
   }, [])
 
   const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragging(false)
-      setDragCounter(0)
+      (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragging(false)
+        setDragCounter(0)
 
-      const files = e.dataTransfer.files
-      if (files.length > 0) handleFileSelect(files[0])
-    },
-    [handleFileSelect],
+        const files = e.dataTransfer.files
+        if (files.length > 0) handleFileSelect(files[0])
+      },
+      [handleFileSelect],
   )
 
   const handleFileInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) handleFileSelect(file)
-    },
-    [handleFileSelect],
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) handleFileSelect(file)
+      },
+      [handleFileSelect],
   )
 
   const handleUploadClick = useCallback(() => {
@@ -135,7 +135,7 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
 
       if (e.key === "Tab") {
         const focusableElements = modalRef.current?.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         )
         if (focusableElements && focusableElements.length > 0) {
           const firstElement = focusableElements[0] as HTMLElement
@@ -175,162 +175,173 @@ export default function VideoRestorePrompt({ isOpen, onVideoRestore, onDismiss, 
   if (!isOpen) return null
 
   return (
-    <>
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200"
-        onClick={onDismiss}
-        aria-hidden="true"
-      />
+      <>
+        <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200"
+            onClick={onDismiss}
+            aria-hidden="true"
+        />
 
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="restore-title"
-        aria-describedby="restore-description"
-      >
-        <Card
-          ref={modalRef}
-          className="w-full max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-300 shadow-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          tabIndex={-1}
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="restore-title"
+            aria-describedby="restore-description"
         >
-          <CardContent className="p-0">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-6 border-b border-blue-200 dark:border-blue-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <FileVideo className="h-6 w-6 text-white" />
+          <Card
+              ref={modalRef}
+              className="w-full max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-300 shadow-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              tabIndex={-1}
+          >
+            <CardContent className="p-0">
+              {/* Header with Exit Button */}
+              <div className="bg-gray-50 dark:bg-gray-800/80 p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                    <FileVideo className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h1 id="restore-title" className="text-xl font-bold text-gray-900 dark:text-white">
+                    <h1 id="restore-title" className="text-lg font-bold text-gray-900 dark:text-white">
                       Resume Session
                     </h1>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Pick up right where you left off
+                    </p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {formatTime(savedData.currentTime)}
-                    </span>
-                    <span className="text-gray-500 dark:text-gray-400">/ {formatTime(savedData.duration)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-green-500" />
-                    <span className="font-medium text-gray-900 dark:text-white">{savedData.totalCounts} counts</span>
-                  </div>
-
-                </div>
-                <span className="text-gray-500 dark:text-gray-400">{formatLastSaved(savedData.lastSaved)}</span>
-              </div>
-            </div>
-
-            <div className="p-8">
-              <div
-                className={`relative border-2 border-dashed rounded-2xl p-12 transition-all duration-300 cursor-pointer group ${
-                  isDragging
-                    ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]"
-                    : "border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
-                } focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500`}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onClick={handleUploadClick}
-                role="button"
-                tabIndex={0}
-                aria-label="Upload video file area"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    handleUploadClick()
-                  }
-                }}
-              >
-                <div className="text-center">
-                  <div
-                    className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      isDragging
-                        ? "bg-blue-100 dark:bg-blue-800 scale-110"
-                        : "bg-gray-100 dark:bg-gray-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-800"
-                    }`}
-                  >
-                    <Upload
-                      className={`h-10 w-10 transition-all duration-300 ${
-                        isDragging
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"
-                      }`}
-                    />
-                  </div>
-
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Upload Video to Continue</h2>
-
-                  <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto leading-relaxed">
-                    Drop your video file here or click to browse. We'll resume from{" "}
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">
-                      {formatTime(savedData.currentTime)}
-                    </span>{" "}
-                    automatically.
-                  </p>
-
-                  <Button
-                    ref={uploadButtonRef}
-                    size="lg"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleUploadClick()
-                    }}
-                  >
-                    <Upload className="h-5 w-5 mr-3" />
-                    Choose Video File
-                  </Button>
-
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
-                    Supports MP4, WebM, OGG, AVI • AVI files auto-convert to MP4 • Max 2GB
-                  </p>
-                </div>
-
-                <Input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/mp4,video/webm,video/ogg,video/avi"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  style={{
-                    position: "absolute",
-                    left: "-9999px",
-                    width: "1px",
-                    height: "1px",
-                    opacity: 0,
-                    pointerEvents: "none",
-                  }}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                />
-              </div>
-
-              <div className="flex justify-center pt-4 ">
-
 
                 <Button
-                  variant="outline"
-                  onClick={onDismiss}
-                  className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-2 focus:ring-blue-500 bg-transparent center"
+                    ref={dismissButtonRef}
+                    variant="ghost"
+                    size="icon"
+                    onClick={onDismiss}
+                    className="h-9 w-9 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    aria-label="Close dialog"
                 >
-                  Start New Session
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </>
+
+              {/* Session Stats Bar */}
+              <div className="px-6 py-3 bg-blue-50/50 dark:bg-blue-950/30 border-b border-blue-100 dark:border-blue-900/50 flex items-center justify-between text-sm">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                    {formatTime(savedData.currentTime)}
+                  </span>
+                    <span className="text-gray-500 dark:text-gray-400 text-xs">/ {formatTime(savedData.duration)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-semibold text-gray-900 dark:text-white">{savedData.totalCounts} counts</span>
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
+                {formatLastSaved(savedData.lastSaved)}
+              </span>
+              </div>
+
+              {/* Upload Body */}
+              <div className="p-8">
+                <div
+                    className={`relative border-2 border-dashed rounded-2xl p-10 transition-all duration-300 cursor-pointer group ${
+                        isDragging
+                            ? "border-blue-500 bg-blue-50/80 dark:bg-blue-900/20 scale-[1.01]"
+                            : "border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    } focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500`}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={handleUploadClick}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Upload video file area"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        handleUploadClick()
+                      }
+                    }}
+                >
+                  <div className="text-center">
+                    <div
+                        className={`w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center transition-all duration-300 ${
+                            isDragging
+                                ? "bg-blue-100 dark:bg-blue-800 scale-110"
+                                : "bg-gray-100 dark:bg-gray-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-800/60"
+                        }`}
+                    >
+                      <Upload
+                          className={`h-8 w-8 transition-all duration-300 ${
+                              isDragging
+                                  ? "text-blue-600 dark:text-blue-400"
+                                  : "text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                          }`}
+                      />
+                    </div>
+
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Upload Video to Continue</h2>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 max-w-sm mx-auto leading-relaxed">
+                      Drop your video file here or click to browse. We&apos;ll resume from{" "}
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                      {formatTime(savedData.currentTime)}
+                    </span>{" "}
+                      automatically.
+                    </p>
+
+                    <Button
+                        ref={uploadButtonRef}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUploadClick()
+                        }}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose Video File
+                    </Button>
+
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-5">
+                      Supports MP4, WebM, OGG, AVI • AVI files auto-convert to MP4 • Max 2GB
+                    </p>
+                  </div>
+
+                  <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm,video/ogg,video/avi"
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                      style={{
+                        position: "absolute",
+                        left: "-9999px",
+                        width: "1px",
+                        height: "1px",
+                        opacity: 0,
+                        pointerEvents: "none",
+                      }}
+                      tabIndex={-1}
+                      aria-hidden="true"
+                  />
+                </div>
+
+                <div className="flex justify-center pt-4">
+                  <Button
+                      variant="outline"
+                      onClick={onDismiss}
+                      className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600"
+                  >
+                    Start New Session
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
   )
 }

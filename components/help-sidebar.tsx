@@ -5,16 +5,12 @@ import { Button } from "@/components/ui/button"
 import { ChevronRight, Undo2, ExternalLink } from "lucide-react"
 import { SidebarConfig, QuickTipContext } from "@/lib/config/sidebar.config"
 
-export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
-export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
-
 interface HelpSidebarProps {
     isOpen: boolean
     onClose: () => void
     onUndo?: () => void
     canUndo?: boolean
-    onLog?: (category: VehicleCategory, type: VehicleType) => void
-    activeModifierType?: VehicleType
+    onAction?: (actionKey: string) => void
     config: SidebarConfig
     context?: QuickTipContext
 }
@@ -24,8 +20,7 @@ export default function HelpSidebar({
                                         onClose,
                                         onUndo,
                                         canUndo = false,
-                                        onLog,
-                                        activeModifierType = 'Car', // Fallback to 'Car' if undefined
+                                        onAction,
                                         config,
                                         context = {}
                                     }: HelpSidebarProps) {
@@ -44,12 +39,6 @@ export default function HelpSidebar({
             document.removeEventListener("keydown", handleEscape)
         }
     }, [isOpen, onClose])
-
-    const handleUndoClick = () => {
-        if (onUndo && canUndo) {
-            onUndo()
-        }
-    }
 
     if (!isOpen) return null
 
@@ -92,7 +81,7 @@ export default function HelpSidebar({
                             {onUndo && (
                                 <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                                     <Button
-                                        onClick={handleUndoClick}
+                                        onClick={onUndo}
                                         disabled={!canUndo}
                                         className={`w-full flex items-center justify-center gap-3 h-12 transition-all duration-200 ${
                                             canUndo
@@ -111,18 +100,14 @@ export default function HelpSidebar({
                             <div className="flex-1 overflow-y-auto p-4">
                                 <div className="space-y-3" style={{ userSelect: "none" }}>
                                     {config.shortcuts.map((shortcut, index) => {
-                                        // Directly inspect keys[0] or actionKey to see if it's a loggable button (1, 2, or 3)
-                                        const mainKey = shortcut.keys[0];
-                                        const isClickable = ["1", "2", "3"].includes(mainKey) && !!onLog;
+                                        const isClickable = !!shortcut.actionKey && !!onAction;
 
                                         return (
                                             <div
                                                 key={index}
                                                 onClick={() => {
-                                                    if (isClickable && onLog) {
-                                                        if (mainKey === "1") onLog("cut_through", activeModifierType)
-                                                        if (mainKey === "2") onLog("parking", activeModifierType)
-                                                        if (mainKey === "3") onLog("driving", activeModifierType)
+                                                    if (isClickable && shortcut.actionKey && onAction) {
+                                                        onAction(shortcut.actionKey)
                                                     }
                                                 }}
                                                 className={`flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200 ${

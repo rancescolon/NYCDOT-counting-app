@@ -1,60 +1,50 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import type React from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import dynamic from "next/dynamic"
 import VideoPlayer from "@/components/video-player"
 import VideoControls from "@/components/video-controls"
-import { VideoOverlay } from "@/components/video-overlay"
+import { VisualIndicator } from "@/components/visual-indicator"
 import { useVehicleInput } from "@/hooks/use-vehicle-input"
+import { useVideoQueue } from "@/hooks/use-video-queue"
 import { CountEntry, Stroke, SavedState, VideoMetadata, VehicleCategory, VehicleType } from "@/lib/types/types"
 import * as XLSX from "xlsx-js-style"
 import { HelpSidebarConfig } from "@/lib/config/sidebar.config"
+import {videoToolConfigs} from "@/lib/config/video-tool.config"
 
 const HelpSidebar = dynamic(() => import("@/components/help-sidebar").then(mod => mod.default), { ssr: false })
-const ReviewSidebar = dynamic(() => import("@/components/review-sidebar").then(mod => mod.default), { ssr: false })
+const ReviewSidebar = dynamic(() => import("@/components/counter/review-sidebar").then(mod => mod.default), { ssr: false })
 const VideoRestorePrompt = dynamic(() => import("@/components/video-restore-prompt").then(mod => mod.default), { ssr: false })
 const VideoTimeInputDialog = dynamic(() => import("@/components/video-time-input-dialog").then(mod => mod.default), { ssr: false })
 const VideoEndPrompt = dynamic(() => import("@/components/video-end-prompt").then(mod => mod.default), { ssr: false })
-const NotesModal = dynamic(() => import("@/components/notes-modal").then(mod => mod.default), { ssr: false })
-
+const NotesModal = dynamic(() => import("@/components/counter/notes-modal").then(mod => mod.default), { ssr: false })
 
 const STORAGE_KEY = "vehicle-counter-data"
 const AUTO_SAVE_INTERVAL = 5000
 
-export function extractTimeFromFilename(filename: string): Date | null {
-  const datePattern = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/
-  const match = filename.match(datePattern)
-  if (match) {
-    const [, year, month, day, hour, minute, second] = match
-    const date = new Date(
-        parseInt(year),
-        parseInt(month) - 1,
-        parseInt(day),
-        parseInt(hour),
-        parseInt(minute),
-        parseInt(second)
-    )
-    if (!isNaN(date.getTime())) return date
-  }
-  return null
-}
-
-function CounterPage() {
+export default function CurbCutPage() {
   const [entries, setEntries] = useState<CountEntry[]>([])
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [redoEntries, setRedoEntries] = useState<CountEntry[]>([])
   const [redoStrokes, setRedoStrokes] = useState<Stroke[]>([])
 
+  // Refs to prevent stale closures and StrictMode duplication bugs on undo/redo
+  const entriesRef = useRef(entries)
+  useEffect(() => { entriesRef.current = entries }, [entries])
+  const redoEntriesRef = useRef(redoEntries)
+  useEffect(() => { redoEntriesRef.current = redoEntries }, [redoEntries])
+
+  const strokesRef = useRef(strokes)
+  useEffect(() => { strokesRef.current = strokes }, [strokes])
+  const redoStrokesRef = useRef(redoStrokes)
+  useEffect(() => { redoStrokesRef.current = redoStrokes }, [redoStrokes])
+
   const [isDrawingMode, setIsDrawingMode] = useState(false)
-  const [videoQueue, setVideoQueue] = useState<File[]>([])
-  const [sessionFiles, setSessionFiles] = useState<File[]>([])
-  const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
 
   const [showNotesModal, setShowNotesModal] = useState(false)
-  const [pendingNote, setPendingNote] = useState("")
-
   const [showExportModal, setShowExportModal] = useState(false)
   const [showHelpSidebar, setShowHelpSidebar] = useState(false)
   const [showReviewSidebar, setShowReviewSidebar] = useState(false)
@@ -66,18 +56,34 @@ function CounterPage() {
 
   const [showTimeInputDialog, setShowTimeInputDialog] = useState(false)
   const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null)
-  const [extractedStartTime, setExtractedStartTime] = useState<Date | null>(null)
   const [showVideoEndPrompt, setShowVideoEndPrompt] = useState(false)
-
-  const [videoCount, setVideoCount] = useState(1)
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [videoMetadata, setVideoMetadata] = useState<Record<number, VideoMetadata>>({})
-  const [isExporting, setIsExporting] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const wasPlayingRef = useRef(false)
   const pendingSeekRef = useRef<number | null>(null)
+
+  const {
+    sessionFiles,
+    videoSrc,
+    currentVideoIndex,
+    videoCount,
+    extractedStartTime,
+    setVideoSrc,
+    setCurrentVideoIndex,
+    handleFilesSelect: handleQueueFilesSelect,
+    handleAddMoreVideos: handleQueueAddMore,
+    handleNextVideo,
+    handleClearVideo: handleQueueClear
+  } = useVideoQueue(() => {
+    setRecordingStartTime(null)
+    setShowTimeInputDialog(true)
+    setIsPlaying(false)
+    setPlaybackRate(1)
+    setEntries([])
+    setRedoEntries([])
+  })
 
   const formatCurrentTimestamp = useCallback(() => {
     if (recordingStartTime && videoRef.current) {
@@ -99,7 +105,6 @@ function CounterPage() {
 
   const closeNotesModal = useCallback(() => {
     setShowNotesModal(false)
-    setPendingNote("")
     if (wasPlayingRef.current && videoRef.current) {
       videoRef.current.play().catch(e => console.error("Playback prevented", e))
       setIsPlaying(true)
@@ -118,29 +123,37 @@ function CounterPage() {
     if (hasN) handleRetroactiveN()
   }, [videoSrc, currentVideoIndex, formatCurrentTimestamp, handleRetroactiveN])
 
-  const handleUndoVehicle = useCallback(() => setEntries(prev => {
-    if (prev.length === 0) return prev
-    setRedoEntries(r => [...r, prev[prev.length - 1]])
-    return prev.slice(0, -1)
-  }), [])
+  const handleUndoVehicle = useCallback(() => {
+    const current = entriesRef.current
+    if (current.length === 0) return
+    const last = current[current.length - 1]
+    setEntries(current.slice(0, -1))
+    setRedoEntries(prev => [...prev, last])
+  }, [])
 
-  const handleRedoVehicle = useCallback(() => setRedoEntries(prev => {
-    if (prev.length === 0) return prev
-    setEntries(e => [...e, prev[prev.length - 1]])
-    return prev.slice(0, -1)
-  }), [])
+  const handleRedoVehicle = useCallback(() => {
+    const currentRedo = redoEntriesRef.current
+    if (currentRedo.length === 0) return
+    const next = currentRedo[currentRedo.length - 1]
+    setRedoEntries(currentRedo.slice(0, -1))
+    setEntries(prev => [...prev, next])
+  }, [])
 
-  const handleUndoStroke = useCallback(() => setStrokes(prev => {
-    if (prev.length === 0) return prev
-    setRedoStrokes(r => [...r, prev[prev.length - 1]])
-    return prev.slice(0, -1)
-  }), [])
+  const handleUndoStroke = useCallback(() => {
+    const current = strokesRef.current
+    if (current.length === 0) return
+    const last = current[current.length - 1]
+    setStrokes(current.slice(0, -1))
+    setRedoStrokes(prev => [...prev, last])
+  }, [])
 
-  const handleRedoStroke = useCallback(() => setRedoStrokes(prev => {
-    if (prev.length === 0) return prev
-    setStrokes(s => [...s, prev[prev.length - 1]])
-    return prev.slice(0, -1)
-  }), [])
+  const handleRedoStroke = useCallback(() => {
+    const currentRedo = redoStrokesRef.current
+    if (currentRedo.length === 0) return
+    const next = currentRedo[currentRedo.length - 1]
+    setRedoStrokes(currentRedo.slice(0, -1))
+    setStrokes(prev => [...prev, next])
+  }, [])
 
   const handleAddStroke = useCallback((stroke: Stroke) => {
     setStrokes((prev) => [...prev, stroke])
@@ -212,7 +225,6 @@ function CounterPage() {
         setStrokes(parsedData.strokes || [])
         setPlaybackRate(parsedData.playbackRate || 1)
         setRecordingStartTime(parsedData.recordingStartTime ? new Date(parsedData.recordingStartTime) : null)
-        setVideoCount(parsedData.videoCount || 1)
         setCurrentVideoIndex(parsedData.currentVideoIndex || 0)
       }
     } catch (e) {
@@ -235,13 +247,11 @@ function CounterPage() {
     const video = videoRef.current
     if (!video) return
     const handleVideoEnd = () => {
-      if (currentVideoIndex + 1 < sessionFiles.length) {
-        const nextIndex = currentVideoIndex + 1
-        if (recordingStartTime && videoRef.current) {
-          setRecordingStartTime(new Date(recordingStartTime.getTime() + videoRef.current.duration * 1000))
-        }
-        setCurrentVideoIndex(nextIndex)
-        setVideoSrc(URL.createObjectURL(sessionFiles[nextIndex]))
+      if (recordingStartTime && videoRef.current) {
+        setRecordingStartTime(new Date(recordingStartTime.getTime() + videoRef.current.duration * 1000))
+      }
+      const hasNext = handleNextVideo()
+      if (hasNext) {
         setTimeout(() => setIsPlaying(true), 200)
       } else {
         setIsPlaying(false)
@@ -250,7 +260,7 @@ function CounterPage() {
     }
     video.addEventListener("ended", handleVideoEnd)
     return () => video.removeEventListener("ended", handleVideoEnd)
-  }, [videoSrc, currentVideoIndex, sessionFiles, recordingStartTime])
+  }, [videoRef, recordingStartTime, handleNextVideo])
 
   useEffect(() => {
     if (isPlaying && videoRef.current && videoSrc) videoRef.current.play().catch(e => console.error(e))
@@ -262,32 +272,14 @@ function CounterPage() {
     else videoRef.current.pause()
   }, [])
 
-  const changePlaybackRate = useCallback((rate: number) => {
+  const changePlaybackRate = useCallback((delta: number) => {
     if (!videoRef.current) return
-    videoRef.current.playbackRate = Math.max(0.25, Math.min(16, rate))
-    setPlaybackRate(videoRef.current.playbackRate)
+    const newRate = Math.max(0.25, Math.min(16, videoRef.current.playbackRate + delta))
+    videoRef.current.playbackRate = newRate
+    setPlaybackRate(newRate)
   }, [])
 
-  const handleSeek = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time
-    }
-  }, [])
-
-  const handleSeekToEntry = useCallback((entry: CountEntry) => {
-    if (entry.videoIndex !== currentVideoIndex && sessionFiles[entry.videoIndex]) {
-      setCurrentVideoIndex(entry.videoIndex)
-      setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
-      pendingSeekRef.current = entry.videoTime
-    } else {
-      if (videoRef.current) {
-        videoRef.current.currentTime = entry.videoTime
-        videoRef.current.pause()
-        setIsPlaying(false)
-      }
-    }
-  }, [currentVideoIndex, sessionFiles])
-
+  // Keyboard controls listener (Arrow keys for scrubbing and speed)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target as Element)?.closest("[contenteditable]") || showNotesModal) return
@@ -316,84 +308,42 @@ function CounterPage() {
         videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 5)
       } else if (key === "arrowdown" && videoSrc) {
         event.preventDefault();
-        changePlaybackRate(playbackRate - 0.25)
+        changePlaybackRate(-0.25)
       } else if (key === "arrowup" && videoSrc) {
         event.preventDefault();
-        changePlaybackRate(playbackRate + 0.25)
+        changePlaybackRate(0.25)
       }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [videoSrc, playbackRate, isDrawingMode, changePlaybackRate, togglePlay, showNotesModal])
+  }, [videoSrc, isDrawingMode, changePlaybackRate, togglePlay, showNotesModal])
+
+  const handleSeekToEntry = useCallback((entry: CountEntry) => {
+    if (entry.videoIndex !== currentVideoIndex && sessionFiles[entry.videoIndex]) {
+      setCurrentVideoIndex(entry.videoIndex)
+      setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
+      pendingSeekRef.current = entry.videoTime
+    } else {
+      if (videoRef.current) {
+        videoRef.current.currentTime = entry.videoTime
+        videoRef.current.pause()
+        setIsPlaying(false)
+      }
+    }
+  }, [currentVideoIndex, sessionFiles, setVideoSrc, setCurrentVideoIndex])
 
   const handleClearVideo = useCallback(() => {
-    setVideoSrc(null);
-    setSessionFiles([]);
-    setEntries([]);
-    setRedoEntries([]);
-    setStrokes([]);
-    setRedoStrokes([])
-    setIsPlaying(false);
-    setPlaybackRate(1);
-    setRecordingStartTime(null);
-    setExtractedStartTime(null);
-    setVideoCount(1)
-    setCurrentVideoIndex(0);
-    setVideoMetadata({});
-    localStorage.removeItem(STORAGE_KEY)
-  }, [])
-
-  const handleFilesSelect = useCallback((files: File[]) => {
-    if (files.length === 0) return
-
+    handleQueueClear()
     setEntries([])
     setRedoEntries([])
-
-    const sortedFiles = [...files].sort((a, b) => {
-      const timeA = extractTimeFromFilename(a.name)?.getTime() || 0
-      const timeB = extractTimeFromFilename(b.name)?.getTime() || 0
-      return timeA - timeB
-    })
-
-    const firstFile = sortedFiles[0]
-    setSessionFiles(sortedFiles)
-
-    setVideoSrc(URL.createObjectURL(firstFile))
     setStrokes([])
-
-    setExtractedStartTime(extractTimeFromFilename(firstFile.name))
-    setRecordingStartTime(null)
-    setShowTimeInputDialog(true)
+    setRedoStrokes([])
     setIsPlaying(false)
     setPlaybackRate(1)
-    setCurrentVideoIndex(0)
-    setVideoCount(1)
-  }, [])
-
-  const handleAddMoreVideos = useCallback((files: File[]) => {
-    if (files.length === 0) return
-
-    const sortedFiles = [...files].sort((a, b) => {
-      const timeA = extractTimeFromFilename(a.name)?.getTime() || 0
-      const timeB = extractTimeFromFilename(b.name)?.getTime() || 0
-      return timeA - timeB
-    })
-
-    const newSessionFiles = [...sessionFiles, ...sortedFiles]
-    setSessionFiles(newSessionFiles)
-    setShowVideoEndPrompt(false)
-    setShowExportModal(false) // Closes export modal if it was open
-
-    if (!videoSrc) {
-      setVideoSrc(URL.createObjectURL(sortedFiles[0]))
-      setVideoQueue(sortedFiles.slice(1))
-      setVideoCount(prev => prev + 1)
-      setCurrentVideoIndex(prev => prev + 1)
-      setTimeout(() => setIsPlaying(true), 200)
-    } else {
-      setVideoQueue(prev => [...prev, ...sortedFiles])
-    }
-  }, [sessionFiles, videoSrc])
+    setRecordingStartTime(null)
+    setVideoMetadata({})
+    localStorage.removeItem(STORAGE_KEY)
+  }, [handleQueueClear])
 
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
@@ -418,9 +368,8 @@ function CounterPage() {
         if (entry.category === 'cut_through') {
           cutThroughCol.push(entry.timestamp)
           rowIndex = cutThroughCol.length - 1
-
           let baseNote = entry.type !== 'Car' ? entry.type : ""
-          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note;
+          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note
           if (baseNote) {
             const noteStr = `A${rowIndex + 2}: ${baseNote}`
             notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
@@ -428,9 +377,8 @@ function CounterPage() {
         } else if (entry.category === 'parking') {
           parkingCol.push(entry.timestamp)
           rowIndex = parkingCol.length - 1
-
           let baseNote = entry.type !== 'Car' ? entry.type : ""
-          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note;
+          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note
           if (baseNote) {
             const noteStr = `B${rowIndex + 2}: ${baseNote}`
             notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
@@ -438,9 +386,8 @@ function CounterPage() {
         } else if (entry.category === 'driving') {
           sidewalkCol.push(entry.timestamp)
           rowIndex = sidewalkCol.length - 1
-
           let baseNote = entry.type !== 'Car' ? entry.type : ""
-          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note;
+          if (entry.note) baseNote = baseNote ? `${baseNote} | ${entry.note}` : entry.note
           if (baseNote) {
             const noteStr = `C${rowIndex + 2}: ${baseNote}`
             notesCol[rowIndex] = notesCol[rowIndex] ? `${notesCol[rowIndex]}, ${noteStr}` : noteStr
@@ -462,25 +409,6 @@ function CounterPage() {
       const worksheet = XLSX.utils.json_to_sheet(excelData)
       worksheet['!cols'] = [{wch: 15}, {wch: 18}, {wch: 18}, {wch: 30}]
 
-      const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1:D1")
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({r: R, c: C})
-          if (!worksheet[cellAddress]) continue
-          worksheet[cellAddress].s = {
-            font: {name: "Calibri", sz: 11},
-            alignment: {vertical: "center", horizontal: "left"}
-          }
-          if (R === 0) {
-            worksheet[cellAddress].s.font.bold = true
-            worksheet[cellAddress].s.fill = {fgColor: {rgb: "E2EFDA"}}
-            worksheet[cellAddress].s.border = {bottom: {style: "medium", color: {rgb: "000000"}}}
-          } else {
-            worksheet[cellAddress].s.fill = {fgColor: {rgb: (R % 2 === 0) ? "F2F2F2" : "FFFFFF"}}
-          }
-        }
-      }
-
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, "Vehicle Counts")
       XLSX.writeFile(workbook, `vehicle_counts_${timestamp}.xlsx`)
@@ -489,7 +417,6 @@ function CounterPage() {
     } catch (error) {
       console.error("Failed to export Excel file:", error)
     }
-    setIsExporting(false)
     setShowExportModal(false)
   }, [entries, handleClearVideo, recordingStartTime])
 
@@ -499,18 +426,16 @@ function CounterPage() {
 
   return (
       <>
-        <main
-            className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-[400px]" : ""}`}>
+        <main className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 pt-16 gap-0 overflow-hidden transition-all duration-300 ${(showHelpSidebar || showReviewSidebar) ? "pr-[400px]" : ""}`}>
           <div className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer"
                onClick={() => !isDrawingMode && togglePlay()}>
             <VideoPlayer
                 ref={videoRef}
                 videoSrc={videoSrc}
-                onFilesSelect={handleFilesSelect}
+                onFilesSelect={handleQueueFilesSelect}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
-                onTimeUpdate={() => {
-                }}
+                onTimeUpdate={() => {}}
                 onLoadedMetadata={() => {
                   if (videoRef.current) {
                     if (pendingSeekRef.current !== null) {
@@ -529,7 +454,7 @@ function CounterPage() {
                   }
                 }}
             />
-            {videoSrc && <VideoOverlay isDrawingMode={isDrawingMode} strokes={strokes} onAddStroke={handleAddStroke}/>}
+            {videoSrc && <VisualIndicator isDrawingMode={isDrawingMode} strokes={strokes} onAddStroke={handleAddStroke}/>}
           </div>
 
           <div className="flex-shrink-0 mt-2">
@@ -538,8 +463,13 @@ function CounterPage() {
                 isPlaying={isPlaying}
                 playbackRate={playbackRate}
                 onTogglePlay={togglePlay}
-                onChangePlaybackRate={changePlaybackRate}
+                onChangePlaybackRate={(rate) => {
+                  if (!videoRef.current) return
+                  videoRef.current.playbackRate = rate
+                  setPlaybackRate(rate)
+                }}
                 isVideoLoaded={!!videoSrc}
+                config={videoToolConfigs.curbCuts} // <-- Updated here
                 onUndo={handleUndoVehicle}
                 canUndo={entries.length > 0}
                 onShowHelp={() => setShowHelpSidebar((prev) => !prev)}
@@ -570,11 +500,10 @@ function CounterPage() {
             }}
         />
 
-        {/* The End Prompt Menu */}
         <VideoEndPrompt
             isOpen={showVideoEndPrompt}
             mode="end"
-            onAddMoreVideos={handleAddMoreVideos}
+            onAddMoreVideos={(files) => handleQueueAddMore(files, () => setIsPlaying(true))}
             onStartNewSection={() => {
               setShowVideoEndPrompt(false)
               handleClearVideo()
@@ -589,11 +518,10 @@ function CounterPage() {
             videoCount={videoCount}
         />
 
-        {/* The new unified Export Menu */}
         <VideoEndPrompt
             isOpen={showExportModal}
             mode="export"
-            onAddMoreVideos={handleAddMoreVideos}
+            onAddMoreVideos={(files) => handleQueueAddMore(files, () => setIsPlaying(true))}
             onStartNewSection={() => {
               setShowExportModal(false)
               handleClearVideo()
@@ -616,8 +544,14 @@ function CounterPage() {
             context={{ canUndo: entries.length > 0 }}
             onUndo={handleUndoVehicle}
             canUndo={entries.length > 0}
-            onLog={handleLog}
-            activeModifierType={activeModifierType}
+            onAction={(actionKey) => {
+              switch (actionKey) {
+                case "1": handleLog("cut_through", activeModifierType); break;
+                case "2": handleLog("parking", activeModifierType); break;
+                case "3": handleLog("driving", activeModifierType); break;
+                default: break;
+              }
+            }}
         />
 
         <ReviewSidebar
@@ -651,14 +585,12 @@ function CounterPage() {
             />
         )}
 
-        <input type="file" id="video-upload-hidden" multiple accept="video/mp4, video/webm, video/ogg"
+        <input type="file" id="video-upload-hidden" multiple accept="video/mp4,video/mov,video/quicktime,video/webm,video/ogg,.mov"
                style={{display: "none"}} onChange={(e) => {
           const files = Array.from(e.target.files || []);
-          if (files.length > 0) handleFilesSelect(files);
+          if (files.length > 0) handleQueueFilesSelect(files);
           e.target.value = ""
         }}/>
       </>
   )
 }
-
-export default CounterPage

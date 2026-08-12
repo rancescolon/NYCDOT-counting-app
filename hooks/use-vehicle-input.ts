@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { VehicleCategory, VehicleType } from '@/lib/types'
+import { useEffect, useRef, useState } from 'react'
+import { VehicleCategory, VehicleType } from '@/lib/types/types'
 
 export function useVehicleInput(
     onLog: (category: VehicleCategory, type: VehicleType, hasQ: boolean, hasN: boolean) => void,
@@ -14,6 +14,12 @@ export function useVehicleInput(
     isDrawingMode: boolean
 ) {
     const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set())
+    const pressedKeysRef = useRef<Set<string>>(new Set())
+
+    useEffect(() => {
+        pressedKeysRef.current = pressedKeys
+    }, [pressedKeys])
+
     const [qUsed, setQUsed] = useState(false)
     const [nUsed, setNUsed] = useState(false)
 
@@ -21,9 +27,10 @@ export function useVehicleInput(
         let activeModifiers = 0
         let selectedType: VehicleType = 'Car'
 
-        if (pressedKeys.has('m')) { activeModifiers++; selectedType = 'Moto' }
-        if (pressedKeys.has('e') || pressedKeys.has('b')) { activeModifiers++; selectedType = 'Ebike' }
-        if (pressedKeys.has('t')) { activeModifiers++; selectedType = 'Truck' }
+        const keys = pressedKeysRef.current
+        if (keys.has('m')) { activeModifiers++; selectedType = 'Moto' }
+        if (keys.has('e') || keys.has('b')) { activeModifiers++; selectedType = 'Ebike' }
+        if (keys.has('t')) { activeModifiers++; selectedType = 'Truck' }
 
         return activeModifiers > 1 ? 'Car' : selectedType
     }
@@ -45,10 +52,17 @@ export function useVehicleInput(
             const targetKeys = ['1', '2', '3', 'm', 'e', 'b', 't', 'z', 'r', 'q', 'n', 'shift']
             if (targetKeys.includes(key)) {
                 if (key !== 'shift') e.preventDefault()
-                setPressedKeys((prev) => new Set(prev).add(key))
+                setPressedKeys((prev) => {
+                    const next = new Set(prev)
+                    next.add(key)
+                    return next
+                })
                 if (key === 'q') setQUsed(false)
                 if (key === 'n') setNUsed(false)
             }
+
+            // Prevent multi-triggering when holding down keys (key repeat)
+            if (e.repeat) return
 
             if (key === 'z') {
                 if (e.shiftKey || isDrawingMode) onUndoStroke()
@@ -64,7 +78,7 @@ export function useVehicleInput(
 
             if (['1', '2', '3'].includes(key)) {
                 const category: VehicleCategory = key === '1' ? 'cut_through' : key === '2' ? 'parking' : 'driving'
-                const currentPressed = new Set(pressedKeys)
+                const currentPressed = new Set(pressedKeysRef.current)
                 currentPressed.add(key)
 
                 let activeModifiers = 0
@@ -91,8 +105,8 @@ export function useVehicleInput(
                 key = code.replace("numpad", "")
             }
 
-            if (key === 'q' && !qUsed && pressedKeys.has('q')) onRetroactiveQ()
-            if (key === 'n' && !nUsed && pressedKeys.has('n')) onRetroactiveN()
+            if (key === 'q' && !qUsed && pressedKeysRef.current.has('q')) onRetroactiveQ()
+            if (key === 'n' && !nUsed && pressedKeysRef.current.has('n')) onRetroactiveN()
 
             setPressedKeys((prev) => {
                 const newSet = new Set(prev)
@@ -108,7 +122,7 @@ export function useVehicleInput(
             window.removeEventListener('keydown', handleKeyDown)
             window.removeEventListener('keyup', handleKeyUp)
         }
-    }, [pressedKeys, isDrawingMode, qUsed, nUsed, onLog, onUndoVehicle, onRedoVehicle, onUndoStroke, onRedoStroke, onRetroactiveQ, onRetroactiveN])
+    }, [isDrawingMode, qUsed, nUsed, onLog, onUndoVehicle, onRedoVehicle, onUndoStroke, onRedoStroke, onRetroactiveQ, onRetroactiveN])
 
     return { activeModifierType: getActiveType() }
 }
