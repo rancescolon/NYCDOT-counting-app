@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { SpeedStudyFormState } from '@/lib/types/types';
+import * as XLSX from "xlsx-js-style"
 
 
 interface SpeedRecord {

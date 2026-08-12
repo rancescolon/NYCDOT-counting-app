@@ -8,14 +8,15 @@ import { VideoOverlay } from "@/components/video-overlay"
 import { useVehicleInput } from "@/hooks/use-vehicle-input"
 import { CountEntry, Stroke, SavedState, VideoMetadata, VehicleCategory, VehicleType } from "@/lib/types/types"
 import * as XLSX from "xlsx-js-style"
+import { HelpSidebarConfig } from "@/lib/config/sidebar.config"
 
-// Lazy loaders (ExportProgressModal removed)
-const HelpSidebar = dynamic(() => import("@/components/help-sidebar"), { ssr: false })
-const ReviewSidebar = dynamic(() => import("@/components/review-sidebar"), { ssr: false })
-const VideoRestorePrompt = dynamic(() => import("@/components/video-restore-prompt"), { ssr: false })
-const VideoTimeInputDialog = dynamic(() => import("@/components/video-time-input-dialog"), { ssr: false })
-const VideoEndPrompt = dynamic(() => import("@/components/video-end-prompt"), { ssr: false })
-const NotesModal = dynamic(() => import("@/components/notes-modal"), { ssr: false })
+const HelpSidebar = dynamic(() => import("@/components/help-sidebar").then(mod => mod.default), { ssr: false })
+const ReviewSidebar = dynamic(() => import("@/components/review-sidebar").then(mod => mod.default), { ssr: false })
+const VideoRestorePrompt = dynamic(() => import("@/components/video-restore-prompt").then(mod => mod.default), { ssr: false })
+const VideoTimeInputDialog = dynamic(() => import("@/components/video-time-input-dialog").then(mod => mod.default), { ssr: false })
+const VideoEndPrompt = dynamic(() => import("@/components/video-end-prompt").then(mod => mod.default), { ssr: false })
+const NotesModal = dynamic(() => import("@/components/notes-modal").then(mod => mod.default), { ssr: false })
+
 
 const STORAGE_KEY = "vehicle-counter-data"
 const AUTO_SAVE_INTERVAL = 5000
@@ -608,8 +609,16 @@ function CounterPage() {
             videoCount={videoCount}
         />
 
-        <HelpSidebar isOpen={showHelpSidebar} onClose={() => setShowHelpSidebar(false)} onUndo={handleUndoVehicle}
-                     canUndo={entries.length > 0} onLog={handleLog} activeModifierType={activeModifierType}/>
+        <HelpSidebar
+            isOpen={showHelpSidebar}
+            onClose={() => setShowHelpSidebar(false)}
+            config={HelpSidebarConfig.vehicle}
+            context={{ canUndo: entries.length > 0 }}
+            onUndo={handleUndoVehicle}
+            canUndo={entries.length > 0}
+            onLog={handleLog}
+            activeModifierType={activeModifierType}
+        />
 
         <ReviewSidebar
             isOpen={showReviewSidebar}

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Undo2,ExternalLink } from "lucide-react"
+import { ChevronRight, Undo2, ExternalLink } from "lucide-react"
+import { SidebarConfig, QuickTipContext } from "@/lib/config/sidebar.config"
 
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
 export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
@@ -10,76 +11,13 @@ export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
 interface HelpSidebarProps {
     isOpen: boolean
     onClose: () => void
-    onUndo: () => void
-    canUndo: boolean
+    onUndo?: () => void
+    canUndo?: boolean
     onLog?: (category: VehicleCategory, type: VehicleType) => void
-    activeModifierType: VehicleType
+    activeModifierType?: VehicleType
+    config: SidebarConfig
+    context?: QuickTipContext
 }
-
-const keyboardShortcuts = [
-    {
-        keys: ["1"],
-        description: "Mark Sidewalk Cut Through",
-        color: "bg-blue-500",
-    },
-    {
-        keys: ["2"],
-        description: "Mark Sidewalk Parking",
-        color: "bg-emerald-500",
-    },
-    {
-        keys: ["3"],
-        description: "Mark Sidewalk Driving",
-        color: "bg-amber-400",
-    },
-    {
-        keys: ["Hold M"],
-        description: "Motorcycle Modifier",
-        color: "bg-purple-500",
-    },
-    {
-        keys: ["Hold E", "Hold B"],
-        description: "E-Bike Modifier",
-        color: "bg-purple-500",
-    },
-    {
-        keys: ["Hold T"],
-        description: "Truck Modifier",
-        color: "bg-purple-500",
-    },
-    {
-        keys: ["Shift"],
-        description: "Drawing Mode",
-        color: "bg-red-500",
-    },
-    {
-        keys: ["↑", "↓"],
-        description: "Slow down / Speed up",
-        color: "bg-gray-500",
-    },
-    {
-        keys: ["?"],
-        description: "Toggle this help menu",
-        color: "bg-gray-800",
-    },
-
-    {
-        keys: ["R"],
-        description: "Redo an undo",
-        color: "bg-yellow-800", // change color
-    },
-    {
-        keys: ["Hold Q"],
-        description: "Questionable Modifier",
-        color: "bg-purple-500",
-    },
-
-    {
-        keys: ["N"],
-        description: "Add a note",
-        color: "bg-red-500",
-    },
-]
 
 export default function HelpSidebar({
                                         isOpen,
@@ -87,7 +25,9 @@ export default function HelpSidebar({
                                         onUndo,
                                         canUndo = false,
                                         onLog,
-                                        activeModifierType
+                                        activeModifierType = 'Car', // Fallback to 'Car' if undefined
+                                        config,
+                                        context = {}
                                     }: HelpSidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -112,6 +52,8 @@ export default function HelpSidebar({
     }
 
     if (!isOpen) return null
+
+    const tips = config.quickTips(context);
 
     return (
         <>
@@ -147,35 +89,40 @@ export default function HelpSidebar({
                     {!isCollapsed && (
                         <>
                             {/* Header / Undo Button */}
-                            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                                <Button
-                                    onClick={handleUndoClick}
-                                    disabled={!canUndo}
-                                    className={`w-full flex items-center justify-center gap-3 h-12 transition-all duration-200 ${
-                                        canUndo
-                                            ? "bg-orange-500 hover:bg-orange-600 text-white hover:scale-105 hover:shadow-md"
-                                            : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                                    }`}
-                                >
-                                    <Undo2 className="h-5 w-5" />
-                                    <span className="font-semibold">Undo Last Count</span>
-                                    <kbd className="px-2 py-1 text-xs font-mono bg-black/20 text-white rounded">Z</kbd>
-                                </Button>
-                            </div>
+                            {onUndo && (
+                                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                                    <Button
+                                        onClick={handleUndoClick}
+                                        disabled={!canUndo}
+                                        className={`w-full flex items-center justify-center gap-3 h-12 transition-all duration-200 ${
+                                            canUndo
+                                                ? "bg-orange-500 hover:bg-orange-600 text-white hover:scale-105 hover:shadow-md"
+                                                : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                                        }`}
+                                    >
+                                        <Undo2 className="h-5 w-5" />
+                                        <span className="font-semibold">Undo Last Count</span>
+                                        <kbd className="px-2 py-1 text-xs font-mono bg-black/20 text-white rounded">Z</kbd>
+                                    </Button>
+                                </div>
+                            )}
 
                             {/* Content */}
                             <div className="flex-1 overflow-y-auto p-4">
                                 <div className="space-y-3" style={{ userSelect: "none" }}>
-                                    {keyboardShortcuts.map((shortcut, index) => {
-                                        const isClickable = ["1", "2", "3"].includes(shortcut.keys[0]) && !!onLog;
+                                    {config.shortcuts.map((shortcut, index) => {
+                                        // Directly inspect keys[0] or actionKey to see if it's a loggable button (1, 2, or 3)
+                                        const mainKey = shortcut.keys[0];
+                                        const isClickable = ["1", "2", "3"].includes(mainKey) && !!onLog;
+
                                         return (
                                             <div
                                                 key={index}
                                                 onClick={() => {
                                                     if (isClickable && onLog) {
-                                                        if (shortcut.keys[0] === "1") onLog("cut_through", activeModifierType)
-                                                        if (shortcut.keys[0] === "2") onLog("parking", activeModifierType)
-                                                        if (shortcut.keys[0] === "3") onLog("driving", activeModifierType)
+                                                        if (mainKey === "1") onLog("cut_through", activeModifierType)
+                                                        if (mainKey === "2") onLog("parking", activeModifierType)
+                                                        if (mainKey === "3") onLog("driving", activeModifierType)
                                                     }
                                                 }}
                                                 className={`flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200 ${
@@ -202,30 +149,32 @@ export default function HelpSidebar({
                                     })}
                                 </div>
 
-                                <div className="mt-6 rounded-lg border border-blue-500 bg-gray-100 p-4 mb-4 dark:border-blue-400 dark:bg-gray-800">
-                                    <h4 className="mb-3 text-sm font-semibold text-blue-800 dark:text-blue-200">
-                                        Quick Tips
-                                    </h4>
+                                {tips.length > 0 && (
+                                    <div className="mt-6 rounded-lg border border-blue-500 bg-gray-100 p-4 mb-4 dark:border-blue-400 dark:bg-gray-800">
+                                        <h4 className="mb-3 text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                            Quick Tips
+                                        </h4>
 
-                                    <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                                        <li>• Press <strong>1, 2, or 3</strong> to log a vehicle (incorporates any held modifier).</li>
-                                        <li>• Hold <strong>M, E/B, or T</strong> to change the vehicle type.</li>
-                                        <li>• Press <strong>Shift</strong> to toggle drawing restricted zones.</li>
-                                        <li>• Press <strong>Z</strong> to undo the last logged vehicle.</li>
-                                        <li>• Press <strong>Shift + Z</strong> to undo the last drawn line.</li>
-                                        <li>
-                                            <a
-                                                href="https://scribehow.com/o/3GFUEJCXRdq_VBvGu59luw/viewer/How_To_Use_The_NYCDOT_Traffic_Video_Counting_App__I3HaCYxETYuEN6NGyajSNw"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 font-medium text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                            >
-                                                How to use the app
-                                                <ExternalLink className="h-4 w-4" />
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
+                                        <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                            {tips.map((tip, index) => (
+                                                <li key={index}>
+                                                    • {tip.text}
+                                                    {tip.link && (
+                                                        <a
+                                                            href={tip.link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 font-medium text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 ml-1"
+                                                        >
+                                                            {tip.link.label}
+                                                            <ExternalLink className="h-4 w-4" />
+                                                        </a>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
