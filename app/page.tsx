@@ -8,7 +8,7 @@ export default function HomePage() {
         Welcome to the DOT Tool App
       </h1>
       <p className="text-lg text-gray-700 dark:text-gray-300 mb-8 max-w-2xl">
-        Better data, Better City. Log cleaner never paper
+        Better data, Better City.
       </p>
       <Link href="/counter" passHref>
         <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">

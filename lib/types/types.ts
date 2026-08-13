@@ -49,7 +49,8 @@ export type Borough = 'Manhattan' | 'Bronx' | 'Brooklyn' | 'Queens' | 'Staten Is
 export type Team = 'School Safety' | 'Vision Zero' | 'Research' | 'Engineering';
 export type StreetType = 'One Way' | 'Two Way';
 export type Direction = 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound';
-export type WeatherCondition = 'Clear' | 'Cloudy' | 'Wet Pavement';
+
+export type WeatherCondition = 'Sunny' | 'Cloudy' | 'Rainy' | 'Heavy Rain' | 'Snowing';
 
 export interface SpeedStudyFormState {
     streetName: string;

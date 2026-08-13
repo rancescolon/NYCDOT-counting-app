@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SpeedStudyFormState } from '@/lib/types/types';
 import * as XLSX from "xlsx-js-style"
 
-
 interface SpeedRecord {
     id: string;
     speed: number;
@@ -21,6 +20,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     const [recordedSpeeds, setRecordedSpeeds] = useState<SpeedRecord[]>([]);
     const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
     const [studyStartTime, setStudyStartTime] = useState<string | null>(null);
+    const [isFinished, setIsFinished] = useState<boolean>(false);
 
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -35,9 +35,23 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     useEffect(() => {
         if (recordedSpeeds.length === 0) return;
         const timer = setInterval(() => {
-            setElapsedSeconds((prev) => prev + 1);
+            setElapsedSeconds((prev) => {
+                const nextTime = prev + 1;
+                // Trigger finished popup after 1 hour (3600 seconds) or 2 hours (7200 seconds)
+                if (nextTime >= 3600) {
+                    setIsFinished(true);
+                }
+                return nextTime;
+            });
         }, 1000);
         return () => clearInterval(timer);
+    }, [recordedSpeeds.length]);
+
+    // Trigger finished popup after 100 cars
+    useEffect(() => {
+        if (recordedSpeeds.length >= 100) {
+            setIsFinished(true);
+        }
     }, [recordedSpeeds.length]);
 
     const formatTime = (totalSeconds: number) => {
@@ -49,7 +63,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     const handleSubmitSpeed = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         const speedNum = parseInt(currentInput, 10);
-        if (isNaN(speedNum) || speedNum <= 0) return;
+        if (isNaN(speedNum) || speedNum <= 0 || isFinished) return;
 
         const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -111,10 +125,10 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col justify-between pb-4">
-            {/* Top Header */}
+        <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col justify-between pb-4 pt-36">
+            {/* Top Header - Adjusted padding/offset to prevent nav bar blockage */}
             <div>
-                <header className="bg-white border-b border-gray-200 px-3 py-2.5 sticky top-0 z-30 shadow-sm">
+                <header className="bg-white border-b border-gray-200 px-3 py-2.5 fixed top-0 left-0 right-0 z-30 shadow-sm pt-24">
                     <div className="max-w-md mx-auto flex items-center justify-between">
                         <h1 className="text-base font-bold text-gray-900 truncate">
                             {studyData.streetName || 'Unnamed Street'}
@@ -122,7 +136,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                         <button
                             type="button"
                             onClick={handleExportAndEnd}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
                         >
                             Export Excel
                         </button>
@@ -144,19 +158,19 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
             </div>
 
             {/* Main Input & Recent Logs Area */}
-            <div className="max-w-md mx-auto w-full px-3 flex-1 flex flex-col justify-center my-2 space-y-2">
+            <div className="max-w-md mx-auto w-full px-3 flex-1 flex flex-col justify-center my-2 space-y-3">
 
-                {/* Recent Entries Ticker (Placed Above Numpad) */}
-                <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">Recent Logs</span>
-                    <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                {/* Recent Entries Ticker (Bigger entries & scrollable fix) */}
+                <div className="bg-white rounded-xl border border-gray-200 p-3 shadow-sm">
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Recent Logs</span>
+                    <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x scrollbar-thin">
                         {recordedSpeeds.length === 0 ? (
-                            <span className="text-xs text-gray-400 italic">No vehicles logged yet. Type speed below.</span>
+                            <span className="text-xs text-gray-400 italic py-2">No vehicles logged yet. Type speed below.</span>
                         ) : (
-                            recordedSpeeds.slice(0, 5).map((rec) => (
-                                <div key={rec.id} className="bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-lg flex-shrink-0 text-center">
-                                    <span className="block text-xs font-bold text-blue-600">{rec.speed} MPH</span>
-                                    <span className="text-[9px] text-gray-400">{rec.timestamp}</span>
+                            recordedSpeeds.map((rec) => (
+                                <div key={rec.id} className="bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-xl flex-shrink-0 text-center min-w-[75px]">
+                                    <span className="block text-sm font-extrabold text-blue-600">{rec.speed} MPH</span>
+                                    <span className="text-[10px] text-gray-500">{rec.timestamp}</span>
                                 </div>
                             ))
                         )}
@@ -190,10 +204,10 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                     <div className="flex gap-2">
                         <button
                             type="submit"
-                            disabled={!currentInput}
+                            disabled={!currentInput || isFinished}
                             onMouseDown={(e) => e.preventDefault()}
                             className={`px-5 py-3 rounded-xl font-bold text-sm transition shadow-sm ${
-                                currentInput
+                                currentInput && !isFinished
                                     ? 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
                                     : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                             }`}
@@ -203,6 +217,29 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                     </div>
                 </form>
             </div>
+
+            {/* Finished Popup Modal */}
+            {isFinished && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 max-w-sm w-full text-center space-y-4">
+                        <h3 className="text-xl font-bold text-gray-900">Study Finished!</h3>
+                        <p className="text-sm text-gray-600">
+                            {recordedSpeeds.length >= 100
+                                ? "You have successfully logged 100 vehicles."
+                                : "The study time limit (1 or 2 hours) has been reached."}
+                        </p>
+                        <div className="pt-2">
+                            <button
+                                type="button"
+                                onClick={handleExportAndEnd}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-sm text-sm"
+                            >
+                                Export Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

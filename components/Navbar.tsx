@@ -64,7 +64,7 @@ export default function Navbar() {
                 <nav className="hidden md:block">
                     <ul className="flex items-center gap-6">
                         <li>
-                            <Link href="/counter" className="hover:text-gray-300 transition-colors">
+                            <Link href="/curbcuts" className="hover:text-gray-300 transition-colors">
                                 Curb Cuts
                             </Link>
                         </li>
@@ -99,7 +99,7 @@ export default function Navbar() {
                 </button>
             </div>
 
-            {/* Mobile Dropdown Menu (Only Speed Study) */}
+            {/* Mobile Dropdown Menu */}
             {isOpen && (
                 <nav className="md:hidden mt-4 pb-2 border-t border-gray-800 pt-4 animate-fadeIn">
                     <ul className="flex flex-col gap-4 px-2">

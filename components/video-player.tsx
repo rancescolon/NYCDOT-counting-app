@@ -33,7 +33,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
         React.useEffect(() => {
             if (videoSrc) {
                 try {
-                    const savedData = localStorage.getItem("vehicle-counter-data")
+                    const savedData = localStorage.getItem("vehicle-curbCuts-data")
                     if (savedData) {
                         const parsedData = JSON.parse(savedData)
                         if (
@@ -101,7 +101,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
 
                 if (validFiles.length > 0) {
                     try {
-                        localStorage.removeItem("vehicle-counter-data")
+                        localStorage.removeItem("vehicle-curbCuts-data")
                     } catch (error) {
                         console.error("Error clearing saved data:", error)
                     }
@@ -158,7 +158,7 @@ const VideoPlayer = React.forwardRef<HTMLVideoElement, VideoPlayerProps>(
 
         const clearSavedData = useCallback(() => {
             try {
-                localStorage.removeItem("vehicle-counter-data")
+                localStorage.removeItem("vehicle-curbCuts-data")
                 setShowRestoreNotification(false)
                 window.location.reload()
             } catch (error) {

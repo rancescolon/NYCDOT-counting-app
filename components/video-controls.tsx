@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Play, Pause, HelpCircle, Undo } from "lucide-react"
 import { ControlsPanel } from "./controls-panel"
 import { VideoToolConfig } from "@/lib/config/video-tool.config"
-import { CountEntry } from "@/lib/types/types"
 
 interface VideoControlsProps {
     videoRef: React.RefObject<HTMLVideoElement>
@@ -18,17 +17,9 @@ interface VideoControlsProps {
     isVideoLoaded: boolean
     config: VideoToolConfig
     onUndo?: () => void
-    onFinish?: () => void
-    onClearVideo?: () => void
     canUndo?: boolean
     onShowHelp?: () => void
-    totalCount?: number
-    lastEntry?: CountEntry
-    isDrawingMode?: boolean
-    onToggleDrawingMode?: () => void
-    onClearStrokes?: () => void
-    onExport?: () => void
-    customActions?: React.ReactNode
+    children?: React.ReactNode
 }
 
 export default function VideoControls({
@@ -42,15 +33,7 @@ export default function VideoControls({
                                           onUndo,
                                           canUndo = false,
                                           onShowHelp,
-                                          totalCount,
-                                          lastEntry,
-                                          isDrawingMode = false,
-                                          onToggleDrawingMode,
-                                          onClearStrokes,
-                                          onFinish,
-                                          onClearVideo,
-                                          onExport,
-                                          customActions
+                                          children
                                       }: VideoControlsProps) {
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -65,17 +48,17 @@ export default function VideoControls({
         const updateTime = () => setCurrentTime(video.currentTime)
         const updateDuration = () => setDuration(video.duration || 0)
 
-        video.addEventListener('timeupdate', updateTime)
-        video.addEventListener('loadedmetadata', updateDuration)
-        video.addEventListener('durationchange', updateDuration)
+        video.addEventListener("timeupdate", updateTime)
+        video.addEventListener("loadedmetadata", updateDuration)
+        video.addEventListener("durationchange", updateDuration)
 
         setCurrentTime(video.currentTime || 0)
         setDuration(video.duration || 0)
 
         return () => {
-            video.removeEventListener('timeupdate', updateTime)
-            video.removeEventListener('loadedmetadata', updateDuration)
-            video.removeEventListener('durationchange', updateDuration)
+            video.removeEventListener("timeupdate", updateTime)
+            video.removeEventListener("loadedmetadata", updateDuration)
+            video.removeEventListener("durationchange", updateDuration)
         }
     }, [videoRef, isVideoLoaded])
 
@@ -123,7 +106,6 @@ export default function VideoControls({
     }, [isScrubbing, handleScrub, handleScrubEnd])
 
     const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0
-    const resolvedExportHandler = onFinish ?? onExport ?? (() => {})
 
     return (
         <Card className="shadow-lg rounded-t-none rounded-b-lg border-t-0">
@@ -201,16 +183,9 @@ export default function VideoControls({
                     </div>
 
                     <div className="flex items-center flex-1 justify-end w-full">
-                        <ControlsPanel
-                            totalCount={totalCount}
-                            lastEntry={lastEntry}
-                            isDrawingMode={isDrawingMode}
-                            onToggleDrawingMode={onToggleDrawingMode || (() => {})}
-                            onClearStrokes={onClearStrokes || (() => {})}
-                            onExport={resolvedExportHandler}
-                            config={config}
-                            customActions={customActions}
-                        />
+                        <ControlsPanel>
+                            {children}
+                        </ControlsPanel>
                     </div>
                 </div>
             </CardContent>

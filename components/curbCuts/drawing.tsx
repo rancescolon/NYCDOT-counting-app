@@ -38,6 +38,7 @@ export function DrawingCanvas({ isDrawingMode, strokes, onAddStroke }: DrawingCa
             ctx.beginPath()
             const startPoint = currentPathRef.current[0]
             const currentPoint = currentPathRef.current[currentPathRef.current.length - 1]
+
             ctx.moveTo(startPoint.x, startPoint.y)
             ctx.lineTo(currentPoint.x, currentPoint.y)
             ctx.stroke()
@@ -102,8 +103,10 @@ export function DrawingCanvas({ isDrawingMode, strokes, onAddStroke }: DrawingCa
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
-            className={`absolute inset-0 w-full h-full z-50 ${
-                isDrawingMode ? "cursor-crosshair touch-none" : "pointer-events-none"
+            className={`w-full h-full ${
+                isDrawingMode
+                    ? "cursor-crosshair touch-none pointer-events-auto"
+                    : "pointer-events-none"
             }`}
         />
     )
