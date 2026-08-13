@@ -41,7 +41,7 @@ export default function SpeedStudyPage() {
         weather: 'Sunny',
         isRaining: false,
         isSnowing: false,
-        startTimeSlot: '', // <-- Added missing property here
+        startTimeSlot: '',
         notes: '',
     });
 
@@ -58,7 +58,13 @@ export default function SpeedStudyPage() {
         );
     }
 
-    const isFormDisabled = !isTimeAndDayValid || !isWeatherValid;
+    // Form is disabled if time/weather are invalid OR if required street fields are empty
+    const isFormDisabled =
+        !isTimeAndDayValid ||
+        !isWeatherValid ||
+        !formState.streetName.trim() ||
+        !formState.fromStreet.trim() ||
+        !formState.toStreet.trim();
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 pb-12">
