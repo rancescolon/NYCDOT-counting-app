@@ -13,7 +13,7 @@ import { HelpSidebarConfig } from "@/lib/config/sidebar.config"
 import { videoToolConfigs } from "@/lib/config/video-tool.config"
 import { VisualIndicator } from "@/components/visual-indicator"
 import { DrawingCanvas } from "@/components/curbCuts/drawing"
-import {Button} from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 
 const HelpSidebar = dynamic(() => import("@/components/help-sidebar").then((mod) => mod.default), { ssr: false })
@@ -479,14 +479,10 @@ export default function CurbCutPage() {
     )
 
   return (
-      <>
-        <main
-            className={`h-screen w-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col p-4 pt-16 gap-0 overflow-hidden transition-all duration-300 ${
-                showHelpSidebar || showReviewSidebar ? "pr-[400px]" : ""
-            }`}
-        >
+      <div className="flex pt-16 px-4 pb-4 h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-900">
+        <div className="flex-1 flex flex-col gap-2 h-full overflow-hidden transition-all duration-300">
           <div
-              className="relative flex-grow h-full min-h-0 overflow-hidden rounded-md bg-black cursor-pointer"
+              className="relative flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center shadow-xl border border-slate-200 dark:border-slate-800 cursor-pointer"
               onClick={() => !isDrawingMode && togglePlay()}
           >
             <VideoPlayer
@@ -517,15 +513,15 @@ export default function CurbCutPage() {
             {videoSrc && (
                 <VisualIndicator>
                   <DrawingCanvas
-                    isDrawingMode={isDrawingMode}
-                    strokes={strokes}
-                    onAddStroke={handleAddStroke}
-                />
+                      isDrawingMode={isDrawingMode}
+                      strokes={strokes}
+                      onAddStroke={handleAddStroke}
+                  />
                 </VisualIndicator>
             )}
           </div>
 
-          <div className="flex-shrink-0 mt-2">
+          <div className="z-20 shrink-0">
             <VideoControls
                 videoRef={videoRef}
                 isPlaying={isPlaying}
@@ -541,6 +537,7 @@ export default function CurbCutPage() {
                 onUndo={handleUndoVehicle}
                 canUndo={entries.length > 0}
                 onShowHelp={() => setShowHelpSidebar((prev) => !prev)}
+                controlsAlignment="right"
             >
               {(() => {
                 const resolvedLastEntryLabel = entries.length > 0 ? (() => {
@@ -550,10 +547,10 @@ export default function CurbCutPage() {
                           last.category === 'parking' ? 'Sidewalk Parking' : 'Sidewalk Driving';
                   return (
                       <span className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                        {categoryName}
-                        {last.type && last.type !== 'Car' && <span className="ml-1 text-amber-500 text-[16/px]">({last.type})</span>}
+                    {categoryName}
+                        {last.type && last.type !== 'Car' && <span className="ml-1 text-amber-500 text-[16px]">({last.type})</span>}
                         {last.note && <span className="ml-1 text-red-500 font-bold text-[14px]">(?)</span>}
-                    </span>
+                  </span>
                   );
                 })() : null;
 
@@ -567,20 +564,20 @@ export default function CurbCutPage() {
                           <div className="flex items-center gap-3 px-1 py-1 shrink-0">
                             {totalCount !== undefined && (
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-[14px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
-                                        Total:
-                                    </span>
+                          <span className="text-[14px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
+                            Total:
+                          </span>
                                   <span className="text-base font-bold text-slate-700 dark:text-slate-200">
-                                        {totalCount}
-                                    </span>
+                            {totalCount}
+                          </span>
                                 </div>
                             )}
 
                             {resolvedLastEntryLabel && (
                                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                    <span className="text-[14px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider shrink-0">
-                                        Last:
-                                    </span>
+                          <span className="text-[14px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider shrink-0">
+                            Last:
+                          </span>
                                   <div className="text-lg xl:text-xl flex items-center truncate">
                                     {resolvedLastEntryLabel}
                                   </div>
@@ -611,7 +608,47 @@ export default function CurbCutPage() {
               })()}
             </VideoControls>
           </div>
-        </main>
+        </div>
+
+        {(showHelpSidebar || showReviewSidebar) && (
+            <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto shrink-0">
+              {showHelpSidebar && (
+                  <HelpSidebar
+                      isOpen={showHelpSidebar}
+                      onClose={() => setShowHelpSidebar(false)}
+                      config={HelpSidebarConfig.vehicle}
+                      context={{ canUndo: entries.length > 0 }}
+                      onUndo={handleUndoVehicle}
+                      canUndo={entries.length > 0}
+                      onAction={(actionKey) => {
+                        switch (actionKey) {
+                          case "1":
+                            handleLog("cut_through", activeModifierType)
+                            break
+                          case "2":
+                            handleLog("parking", activeModifierType)
+                            break
+                          case "3":
+                            handleLog("driving", activeModifierType)
+                            break
+                          default:
+                            break
+                        }
+                      }}
+                  />
+              )}
+
+              {showReviewSidebar && (
+                  <ReviewSidebar
+                      isOpen={showReviewSidebar}
+                      onClose={() => setShowReviewSidebar(false)}
+                      entries={entries}
+                      onSeekToEntry={handleSeekToEntry}
+                      onUpdateEntry={handleUpdateEntry}
+                  />
+              )}
+            </div>
+        )}
 
         <NotesModal isOpen={showNotesModal} onClose={closeNotesModal} onSave={handleSaveNote} />
 
@@ -665,38 +702,6 @@ export default function CurbCutPage() {
             videoCount={videoCount}
         />
 
-        <HelpSidebar
-            isOpen={showHelpSidebar}
-            onClose={() => setShowHelpSidebar(false)}
-            config={HelpSidebarConfig.vehicle}
-            context={{ canUndo: entries.length > 0 }}
-            onUndo={handleUndoVehicle}
-            canUndo={entries.length > 0}
-            onAction={(actionKey) => {
-              switch (actionKey) {
-                case "1":
-                  handleLog("cut_through", activeModifierType)
-                  break
-                case "2":
-                  handleLog("parking", activeModifierType)
-                  break
-                case "3":
-                  handleLog("driving", activeModifierType)
-                  break
-                default:
-                  break
-              }
-            }}
-        />
-
-        <ReviewSidebar
-            isOpen={showReviewSidebar}
-            onClose={() => setShowReviewSidebar(false)}
-            entries={entries}
-            onSeekToEntry={handleSeekToEntry}
-            onUpdateEntry={handleUpdateEntry}
-        />
-
         {showVideoRestorePrompt && savedStateForRestore && (
             <VideoRestorePrompt
                 isOpen={showVideoRestorePrompt}
@@ -732,6 +737,6 @@ export default function CurbCutPage() {
               e.target.value = ""
             }}
         />
-      </>
+      </div>
   )
 }

@@ -1,3 +1,4 @@
+// components/video-controls.tsx
 "use client"
 
 import type React from "react"
@@ -20,6 +21,7 @@ interface VideoControlsProps {
     canUndo?: boolean
     onShowHelp?: () => void
     children?: React.ReactNode
+    controlsAlignment?: "left" | "right"
 }
 
 export default function VideoControls({
@@ -33,7 +35,8 @@ export default function VideoControls({
                                           onUndo,
                                           canUndo = false,
                                           onShowHelp,
-                                          children
+                                          children,
+                                          controlsAlignment = "right"
                                       }: VideoControlsProps) {
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -182,7 +185,7 @@ export default function VideoControls({
                         )}
                     </div>
 
-                    <div className="flex items-center flex-1 justify-end w-full">
+                    <div className={`flex items-center flex-1 ${controlsAlignment === "left" ? "justify-start" : "justify-end"} w-full`}>
                         <ControlsPanel>
                             {children}
                         </ControlsPanel>

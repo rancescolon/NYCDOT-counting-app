@@ -7,10 +7,11 @@ export interface CountEntry {
     id: string
     timestamp: string
     videoTime: number
-    category: VehicleCategory
-    type: VehicleType
+    category?: VehicleCategory
+    type?: VehicleType
     videoIndex: number
     note?: string
+    key?: string
 }
 
 export interface Point {

@@ -74,7 +74,7 @@ export default function Navbar() {
                             </Link>
                         </li>
                         <li>
-                            <Link href="/pedestrianCounting" className="hover:text-gray-300 transition-colors">
+                            <Link href="/pedestrian" className="hover:text-gray-300 transition-colors">
                                 Pedestrian Counting
                             </Link>
                         </li>
