@@ -44,6 +44,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "embla-carousel-react": "latest",
+    "exceljs": "^4.4.0",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
     "next": "^14.2.35",
@@ -58,7 +59,8 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
-    "xlsx-js-style": "^1.2.0"
+    "xlsx-js-style": "^1.2.0",
+    "xlsx-kit": "^0.8.0"
   },
   "devDependencies": {
     "@types/node": "^22",
