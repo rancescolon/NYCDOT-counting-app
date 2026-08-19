@@ -111,6 +111,15 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         setEditingRecord(null);
     };
 
+    // Delete Edited Entry
+    const handleDeleteRecord = () => {
+        if (!editingRecord) return;
+        setRecordedSpeeds((prev) =>
+            prev.filter((rec) => rec.id !== editingRecord.id)
+        );
+        setEditingRecord(null);
+    };
+
     const getPercentile = (sortedSpeeds: number[], percentile: number) => {
         if (sortedSpeeds.length === 0) return 0;
         const index = Math.ceil((percentile / 100) * sortedSpeeds.length) - 1;
@@ -420,10 +429,11 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                         <h1 className="text-base font-bold text-gray-900 truncate">
                             {studyData.streetName || 'Unnamed Street'}
                         </h1>
+                        {/*remove this for final build - export button*/}
                         <button
                             type="button"
                             onClick={handleExportAndEnd}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
+                            className="bg-red-600 text-white border border-red-200 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
                         >
                             Export Excel
                         </button>
@@ -506,18 +516,19 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                             ENTER ✓
                         </button>
 
-                        <button
-                            type="button"
-                            onClick={handleUndo}
-                            disabled={recordedSpeeds.length === 0 || isFinished}
-                            className={`px-3 py-3 rounded-xl font-bold text-xs transition shadow-sm ${
-                                recordedSpeeds.length > 0 && !isFinished
-                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 active:scale-95'
-                                    : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
-                            }`}
-                        >
-                            UNDO
-                        </button>
+                        {/*idk if too keep this uncomment if needed*/}
+                        {/*<button*/}
+                        {/*    type="button"*/}
+                        {/*    onClick={handleUndo}*/}
+                        {/*    disabled={recordedSpeeds.length === 0 || isFinished}*/}
+                        {/*    className={`px-3 py-3 rounded-xl font-bold text-xs transition shadow-sm ${*/}
+                        {/*        recordedSpeeds.length > 0 && !isFinished*/}
+                        {/*            ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 active:scale-95'*/}
+                        {/*            : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'*/}
+                        {/*    }`}*/}
+                        {/*>*/}
+                        {/*    UNDO*/}
+                        {/*</button>*/}
                     </div>
                 </form>
             </div>
@@ -530,34 +541,50 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                         className="bg-white rounded-2xl shadow-xl border border-gray-200 p-5 max-w-sm w-full space-y-4"
                     >
                         <h3 className="text-lg font-bold text-gray-900">Edit Speed Log</h3>
-                        <p className="text-xs text-gray-500">Recorded at: {editingRecord.timestamp}</p>
 
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-                                Speed (MPH)
+                                Speed in MPH
                             </label>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 autoFocus
                                 value={editInputValue}
-                                onChange={(e) => setEditInputValue(e.target.value)}
+                                onChange={(e) => {
+                                    if (e.target.value.length <= 3) {
+                                        setEditInputValue(e.target.value);
+                                    }
+                                }}
                                 className="w-full text-2xl font-extrabold text-gray-900 border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex flex-col gap-2 pt-2">
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingRecord(null)}
+                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition shadow-sm"
+                                >
+                                    Save
+                                </button>
+                            </div>
+
+                            {/* NEW DELETE BUTTON */}
                             <button
                                 type="button"
-                                onClick={() => setEditingRecord(null)}
-                                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm transition"
+                                onClick={handleDeleteRecord}
+                                className="w-full bg-red-600 hover:bg-red-100 text-white border border-red-100 font-bold py-2.5 px-4 rounded-xl text-sm transition"
                             >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition shadow-sm"
-                            >
-                                Save Changes
+                                Delete
                             </button>
                         </div>
                     </form>
@@ -573,6 +600,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                                 ? "You have successfully logged 100 vehicles."
                                 : "The study time limit (1 or 2 hours) has been reached."}
                         </p>
+
                         <div className="pt-2">
                             <button
                                 type="button"
