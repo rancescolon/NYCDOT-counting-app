@@ -20,6 +20,10 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
     const [studyStartTime, setStudyStartTime] = useState<string | null>(null);
     const [isFinished, setIsFinished] = useState<boolean>(false);
 
+    // Edit modal states
+    const [editingRecord, setEditingRecord] = useState<SpeedRecord | null>(null);
+    const [editInputValue, setEditInputValue] = useState<string>('');
+
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -78,6 +82,33 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
         requestAnimationFrame(() => {
             inputRef.current?.focus();
         });
+    };
+
+    // Undo last recorded entry
+    const handleUndo = () => {
+        if (recordedSpeeds.length === 0 || isFinished) return;
+        setRecordedSpeeds((prev) => prev.slice(1));
+    };
+
+    // Open Edit Modal
+    const handleOpenEdit = (record: SpeedRecord) => {
+        if (isFinished) return;
+        setEditingRecord(record);
+        setEditInputValue(record.speed.toString());
+    };
+
+    // Save Edited Entry
+    const handleSaveEdit = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!editingRecord) return;
+
+        const updatedSpeed = parseInt(editInputValue, 10);
+        if (isNaN(updatedSpeed) || updatedSpeed <= 0) return;
+
+        setRecordedSpeeds((prev) =>
+            prev.map((rec) => (rec.id === editingRecord.id ? { ...rec, speed: updatedSpeed } : rec))
+        );
+        setEditingRecord(null);
     };
 
     const getPercentile = (sortedSpeeds: number[], percentile: number) => {
@@ -237,11 +268,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
 
         const workbook = new ExcelJS.Workbook();
 
-        // ------------------------------------------
-        // SHEET 1: Full Form Data
-        // ------------------------------------------
         const sheet1 = workbook.addWorksheet('Full Form Data');
-
         const wsData1: (string | number)[][] = [
             ['SPEED STUDY COMPLETE FORM METADATA'],
             ['Street Name', studyData.streetName || 'Unnamed'],
@@ -288,11 +315,7 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
             column.width = maxLen + 4;
         });
 
-        // ------------------------------------------
-        // SHEET 2: Radar Speed Survey Report
-        // ------------------------------------------
         const sheet2 = workbook.addWorksheet('Radar Study Report');
-
         const titleCell = sheet2.getCell('C2');
         titleCell.value = 'RADAR SPEED SURVEY';
         titleCell.font = { bold: true, size: 16 };
@@ -357,7 +380,6 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
             cG.border = thinBorder;
         });
 
-        // Generate 2D Speed Distribution Chart Image and place under summary table
         const chartBase64 = generate2DChartBase64(rawSpeeds, speedLimitVal);
         if (chartBase64) {
             const chartImageId = workbook.addImage({
@@ -368,15 +390,14 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
             sheet2.addImage(chartImageId, 'B21:G38');
         }
 
-        sheet2.getColumn(1).width = 3;  // A
-        sheet2.getColumn(2).width = 28; // B
-        sheet2.getColumn(3).width = 14; // C
-        sheet2.getColumn(4).width = 8;  // D
-        sheet2.getColumn(5).width = 24; // E
-        sheet2.getColumn(6).width = 14; // F
-        sheet2.getColumn(7).width = 8;  // G
+        sheet2.getColumn(1).width = 3;
+        sheet2.getColumn(2).width = 28;
+        sheet2.getColumn(3).width = 14;
+        sheet2.getColumn(4).width = 8;
+        sheet2.getColumn(5).width = 24;
+        sheet2.getColumn(6).width = 14;
+        sheet2.getColumn(7).width = 8;
 
-        // Save File
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
@@ -424,16 +445,26 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
 
             <div className="max-w-md mx-auto w-full px-3 flex-1 flex flex-col justify-center my-2 space-y-3">
                 <div className="bg-white rounded-xl border border-gray-200 p-3 shadow-sm">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Recent Logs</span>
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                            Recent Logs (Tap to edit)
+                        </span>
+                    </div>
+
                     <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x scrollbar-thin">
                         {recordedSpeeds.length === 0 ? (
                             <span className="text-xs text-gray-400 italic py-2">No vehicles logged yet. Type speed below.</span>
                         ) : (
                             recordedSpeeds.map((rec) => (
-                                <div key={rec.id} className="bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-xl flex-shrink-0 text-center min-w-[75px]">
+                                <button
+                                    key={rec.id}
+                                    type="button"
+                                    onClick={() => handleOpenEdit(rec)}
+                                    className="bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-3.5 py-2 rounded-xl flex-shrink-0 text-center min-w-[75px] transition cursor-pointer"
+                                >
                                     <span className="block text-sm font-extrabold text-blue-600">{rec.speed} MPH</span>
                                     <span className="text-[10px] text-gray-500">{rec.timestamp}</span>
-                                </div>
+                                </button>
                             ))
                         )}
                     </div>
@@ -474,9 +505,64 @@ export const ActiveStudyView: React.FC<Props> = ({ studyData, onEndStudy }) => {
                         >
                             ENTER ✓
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={handleUndo}
+                            disabled={recordedSpeeds.length === 0 || isFinished}
+                            className={`px-3 py-3 rounded-xl font-bold text-xs transition shadow-sm ${
+                                recordedSpeeds.length > 0 && !isFinished
+                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 active:scale-95'
+                                    : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
+                            }`}
+                        >
+                            UNDO
+                        </button>
                     </div>
                 </form>
             </div>
+
+            {/* EDIT ENTRY POPUP MODAL */}
+            {editingRecord && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <form
+                        onSubmit={handleSaveEdit}
+                        className="bg-white rounded-2xl shadow-xl border border-gray-200 p-5 max-w-sm w-full space-y-4"
+                    >
+                        <h3 className="text-lg font-bold text-gray-900">Edit Speed Log</h3>
+                        <p className="text-xs text-gray-500">Recorded at: {editingRecord.timestamp}</p>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                                Speed (MPH)
+                            </label>
+                            <input
+                                type="number"
+                                autoFocus
+                                value={editInputValue}
+                                onChange={(e) => setEditInputValue(e.target.value)}
+                                className="w-full text-2xl font-extrabold text-gray-900 border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setEditingRecord(null)}
+                                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition shadow-sm"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             {isFinished && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
