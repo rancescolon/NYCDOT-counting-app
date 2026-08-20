@@ -1,5 +1,6 @@
-export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+//TODO make length of time for the study configurable
 
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export const DAY_NAMES: Record<DayOfWeek, string> = {
     0: 'Sunday',
     1: 'Monday',
@@ -35,10 +36,10 @@ export interface TeamRuleConfig {
 
 
 export const OBSERVERS_BY_TEAM: Record<string, string[]> = {
-    'School Safety': ['R. Colon', 'F. Castro','N. Carey', 'R. Gomez', 'K. Graham','E. Lunyova', 'N. Adler', 'I. Smith', 'M. Ussery'], // Nick/Elena team
-    'Vision Zero': ['J. Smith'],
+    'School Safety': ['R. Colon', 'F. Castro','N. Carey', 'R. Gomez', 'K. Graham','E. Lunyova', 'N. Adler', 'I. Smith', 'M. Ussery', 'A. Archer', 'M. Oliver', 'T. Wilkins'], // Nick/Elena team
+    // 'Vision Zero': ['J. Smith'],
     'Research': ['J. Adams', 'V. Berliner', 'T. Dorsett', 'A. Rashidov', 'D. Willoughby','F. Adman' ], //John Adams Team
-    'Engineering': ['E. Davis', 'K. Wilson'],
+    // 'Engineering': ['E. Davis', 'K. Wilson'],
 };
 
 export const TEAMS = Object.keys(OBSERVERS_BY_TEAM);
