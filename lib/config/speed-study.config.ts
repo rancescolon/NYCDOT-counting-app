@@ -35,9 +35,9 @@ export interface TeamRuleConfig {
 
 
 export const OBSERVERS_BY_TEAM: Record<string, string[]> = {
-    'School Safety': ['R. Colon', 'F. Castro','N. Carey'],
+    'School Safety': ['R. Colon', 'F. Castro','N. Carey', 'R. Gomez', 'K. Graham','E. Lunyova', 'N. Adler', 'I. Smith', 'M. Ussery'], // Nick/Elena team
     'Vision Zero': ['J. Smith'],
-    'Research': ['A. Rodriguez', 'M. Johnson'],
+    'Research': ['J. Adams', 'V. Berliner', 'T. Dorsett', 'A. Rashidov', 'D. Willoughby','F. Adman' ], //John Adams Team
     'Engineering': ['E. Davis', 'K. Wilson'],
 };
 
@@ -112,7 +112,7 @@ export const TEAM_RULES: Record<string, TeamRuleConfig> = {
         },
     },
     
-    'Vision Zero': {
+    'Research': { // fill out for johns team
         allowedDays: [0, 1, 2, 3, 4, 5, 6], // Allowed any day
         weatherRestriction: {
             mode: 'any',
@@ -121,7 +121,7 @@ export const TEAM_RULES: Record<string, TeamRuleConfig> = {
         },
     },
 
-    'Research': {
+    'Vision Zero': {
         allowedDays: [1, 2, 3, 4, 5],
         daysDescription: 'Research studies are conducted Monday through Friday.',
 
