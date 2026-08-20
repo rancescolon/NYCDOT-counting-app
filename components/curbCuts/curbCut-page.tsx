@@ -32,31 +32,16 @@ export default function CurbCutPage() {
   const [redoEntries, setRedoEntries] = useState<CountEntry[]>([])
   const [redoStrokes, setRedoStrokes] = useState<Stroke[]>([])
 
-  // Refs to prevent stale closures and StrictMode duplication bugs on undo/redo
   const entriesRef = useRef(entries)
-  useEffect(() => {
-    entriesRef.current = entries
-  }, [entries])
-
+  useEffect(() => { entriesRef.current = entries }, [entries])
   const redoEntriesRef = useRef(redoEntries)
-  useEffect(() => {
-    redoEntriesRef.current = redoEntries
-  }, [redoEntries])
-
+  useEffect(() => { redoEntriesRef.current = redoEntries }, [redoEntries])
   const strokesRef = useRef(strokes)
-  useEffect(() => {
-    strokesRef.current = strokes
-  }, [strokes])
-
+  useEffect(() => { strokesRef.current = strokes }, [strokes])
   const redoStrokesRef = useRef(redoStrokes)
-  useEffect(() => {
-    redoStrokesRef.current = redoStrokes
-  }, [redoStrokes])
+  useEffect(() => { redoStrokesRef.current = redoStrokes }, [redoStrokes])
 
   const [isDrawingMode, setIsDrawingMode] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [playbackRate, setPlaybackRate] = useState(1)
-
   const [showNotesModal, setShowNotesModal] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
   const [showHelpSidebar, setShowHelpSidebar] = useState(false)
@@ -65,37 +50,46 @@ export default function CurbCutPage() {
 
   const [showVideoRestorePrompt, setShowVideoRestorePrompt] = useState(false)
   const [savedStateForRestore, setSavedStateForRestore] = useState<SavedState | null>(null)
-  const [pendingVideoRestore, setPendingVideoRestore] = useState(false)
-
   const [showTimeInputDialog, setShowTimeInputDialog] = useState(false)
-  const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null)
   const [showVideoEndPrompt, setShowVideoEndPrompt] = useState(false)
+
   const [videoMetadata, setVideoMetadata] = useState<Record<number, VideoMetadata>>({})
-
-  const videoRef = useRef<HTMLVideoElement>(null)
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const wasPlayingRef = useRef(false)
-  const pendingSeekRef = useRef<number | null>(null)
+  const wasPlayingRef = useRef(false) // Used exclusively for notes modal pausing
 
+  // Use the comprehensive Video Queue hook
   const {
-    sessionFiles,
+    videoRef,
     videoSrc,
     currentVideoIndex,
     videoCount,
+    isPlaying,
+    playbackRate,
+    recordingStartTime,
+    setRecordingStartTime,
     extractedStartTime,
-    setVideoSrc,
-    setCurrentVideoIndex,
-    handleFilesSelect: handleQueueFilesSelect,
-    handleAddMoreVideos: handleQueueAddMore,
-    handleNextVideo,
-    handleClearVideo: handleQueueClear,
-  } = useVideoQueue(() => {
-    setRecordingStartTime(null)
-    setShowTimeInputDialog(true)
-    setIsPlaying(false)
-    setPlaybackRate(1)
-    setEntries([])
-    setRedoEntries([])
+    togglePlay,
+    updatePlaybackRate,
+    seekBy,
+    seekToEntry,
+    prepareRestore,
+    handleAddMoreVideos,
+    handleClearVideo: baseHandleClearVideo,
+    videoPlayerProps,
+  } = useVideoQueue({
+    onQueueEnd: () => setShowVideoEndPrompt(true),
+    onClear: () => {
+      setEntries([])
+      setRedoEntries([])
+      setStrokes([])
+      setRedoStrokes([])
+      setVideoMetadata({})
+    },
+    onSessionStart: () => {
+      setShowTimeInputDialog(true)
+      setEntries([])
+      setRedoEntries([])
+    }
   })
 
   const formatCurrentTimestamp = useCallback(() => {
@@ -104,25 +98,23 @@ export default function CurbCutPage() {
       return actualTime.toTimeString().split(" ")[0]
     }
     return new Date().toTimeString().split(" ")[0]
-  }, [recordingStartTime])
+  }, [recordingStartTime, videoRef])
 
   const handleRetroactiveN = useCallback(() => {
     if (entries.length === 0) return
     if (videoRef.current) {
       wasPlayingRef.current = !videoRef.current.paused
-      videoRef.current.pause()
+      if (!videoRef.current.paused) togglePlay()
     }
-    setIsPlaying(false)
     setShowNotesModal(true)
-  }, [entries.length])
+  }, [entries.length, togglePlay, videoRef])
 
   const closeNotesModal = useCallback(() => {
     setShowNotesModal(false)
-    if (wasPlayingRef.current && videoRef.current) {
-      videoRef.current.play().catch((e) => console.error("Playback prevented", e))
-      setIsPlaying(true)
+    if (wasPlayingRef.current && videoRef.current && videoRef.current.paused) {
+      togglePlay()
     }
-  }, [])
+  }, [togglePlay, videoRef])
 
   const handleLog = useCallback(
       (category: VehicleCategory, type: VehicleType, hasQ = false, hasN = false) => {
@@ -142,7 +134,7 @@ export default function CurbCutPage() {
         setRedoEntries([])
         if (hasN) handleRetroactiveN()
       },
-      [videoSrc, currentVideoIndex, formatCurrentTimestamp, handleRetroactiveN]
+      [videoSrc, currentVideoIndex, formatCurrentTimestamp, handleRetroactiveN, videoRef]
   )
 
   const handleUndoVehicle = useCallback(() => {
@@ -249,7 +241,7 @@ export default function CurbCutPage() {
     } catch (e) {
       console.error("Failed to save:", e)
     }
-  }, [entries, strokes, videoSrc, playbackRate, recordingStartTime, videoCount, currentVideoIndex, videoMetadata])
+  }, [entries, strokes, videoSrc, playbackRate, recordingStartTime, videoCount, currentVideoIndex, videoMetadata, videoRef])
 
   const loadFromStorage = useCallback(() => {
     try {
@@ -263,14 +255,12 @@ export default function CurbCutPage() {
         }
         setEntries(parsedData.entries || [])
         setStrokes(parsedData.strokes || [])
-        setPlaybackRate(parsedData.playbackRate || 1)
         setRecordingStartTime(parsedData.recordingStartTime ? new Date(parsedData.recordingStartTime) : null)
-        setCurrentVideoIndex(parsedData.currentVideoIndex || 0)
       }
     } catch (e) {
       localStorage.removeItem(STORAGE_KEY)
     }
-  }, [setCurrentVideoIndex])
+  }, [setRecordingStartTime])
 
   useEffect(() => {
     loadFromStorage()
@@ -286,51 +276,8 @@ export default function CurbCutPage() {
   }, [saveToStorage, isDataLoaded])
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    const handleVideoEnd = () => {
-      if (recordingStartTime && videoRef.current) {
-        setRecordingStartTime(new Date(recordingStartTime.getTime() + videoRef.current.duration * 1000))
-      }
-      const hasNext = handleNextVideo()
-      if (hasNext) {
-        setTimeout(() => setIsPlaying(true), 200)
-      } else {
-        setIsPlaying(false)
-        setShowVideoEndPrompt(true)
-      }
-    }
-    video.addEventListener("ended", handleVideoEnd)
-    return () => video.removeEventListener("ended", handleVideoEnd)
-  }, [videoRef, recordingStartTime, handleNextVideo])
-
-  useEffect(() => {
-    if (isPlaying && videoRef.current && videoSrc) videoRef.current.play().catch((e) => console.error(e))
-  }, [videoSrc, isPlaying])
-
-  const togglePlay = useCallback(() => {
-    if (!videoRef.current) return
-    if (videoRef.current.paused) videoRef.current.play()
-    else videoRef.current.pause()
-  }, [])
-
-  const changePlaybackRate = useCallback((delta: number) => {
-    if (!videoRef.current) return
-    const newRate = Math.max(0.25, Math.min(16, videoRef.current.playbackRate + delta))
-    videoRef.current.playbackRate = newRate
-    setPlaybackRate(newRate)
-  }, [])
-
-  // Keyboard controls listener
-  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-          event.target instanceof HTMLInputElement ||
-          event.target instanceof HTMLTextAreaElement ||
-          (event.target as Element)?.closest("[contenteditable]") ||
-          showNotesModal
-      )
-        return
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target as Element)?.closest("[contenteditable]") || showNotesModal) return
 
       const key = event.key.toLowerCase()
       if (key === "?" || key === "/") {
@@ -348,53 +295,28 @@ export default function CurbCutPage() {
       if (key === " " && videoSrc) {
         event.preventDefault()
         togglePlay()
-      } else if (key === "arrowleft" && videoSrc && videoRef.current) {
+      } else if (key === "arrowleft" && videoSrc) {
         event.preventDefault()
-        videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5)
-      } else if (key === "arrowright" && videoSrc && videoRef.current) {
+        seekBy(-5)
+      } else if (key === "arrowright" && videoSrc) {
         event.preventDefault()
-        videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 5)
+        seekBy(5)
       } else if (key === "arrowdown" && videoSrc) {
         event.preventDefault()
-        changePlaybackRate(-0.25)
+        updatePlaybackRate(playbackRate - 0.25)
       } else if (key === "arrowup" && videoSrc) {
         event.preventDefault()
-        changePlaybackRate(0.25)
+        updatePlaybackRate(playbackRate + 0.25)
       }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [videoSrc, isDrawingMode, changePlaybackRate, togglePlay, showNotesModal])
-
-  const handleSeekToEntry = useCallback(
-      (entry: CountEntry) => {
-        if (entry.videoIndex !== currentVideoIndex && sessionFiles[entry.videoIndex]) {
-          setCurrentVideoIndex(entry.videoIndex)
-          setVideoSrc(URL.createObjectURL(sessionFiles[entry.videoIndex]))
-          pendingSeekRef.current = entry.videoTime
-        } else {
-          if (videoRef.current) {
-            videoRef.current.currentTime = entry.videoTime
-            videoRef.current.pause()
-            setIsPlaying(false)
-          }
-        }
-      },
-      [currentVideoIndex, sessionFiles, setVideoSrc, setCurrentVideoIndex]
-  )
+  }, [videoSrc, isDrawingMode, updatePlaybackRate, togglePlay, seekBy, playbackRate, showNotesModal])
 
   const handleClearVideo = useCallback(() => {
-    handleQueueClear()
-    setEntries([])
-    setRedoEntries([])
-    setStrokes([])
-    setRedoStrokes([])
-    setIsPlaying(false)
-    setPlaybackRate(1)
-    setRecordingStartTime(null)
-    setVideoMetadata({})
+    baseHandleClearVideo()
     localStorage.removeItem(STORAGE_KEY)
-  }, [handleQueueClear])
+  }, [baseHandleClearVideo])
 
   const handleExportComplete = useCallback(() => {
     if (entries.length === 0) {
@@ -485,31 +407,7 @@ export default function CurbCutPage() {
               className="relative flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center shadow-xl border border-slate-200 dark:border-slate-800 cursor-pointer"
               onClick={() => !isDrawingMode && togglePlay()}
           >
-            <VideoPlayer
-                ref={videoRef}
-                videoSrc={videoSrc}
-                onFilesSelect={handleQueueFilesSelect}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onTimeUpdate={() => {}}
-                onLoadedMetadata={() => {
-                  if (videoRef.current) {
-                    if (pendingSeekRef.current !== null) {
-                      videoRef.current.currentTime = pendingSeekRef.current
-                      videoRef.current.pause()
-                      setIsPlaying(false)
-                      pendingSeekRef.current = null
-                    } else if (pendingVideoRestore && savedStateForRestore) {
-                      videoRef.current.currentTime = savedStateForRestore.currentTime
-                      videoRef.current.playbackRate = savedStateForRestore.playbackRate
-                      setPlaybackRate(savedStateForRestore.playbackRate)
-                      setPendingVideoRestore(false)
-                    } else {
-                      videoRef.current.playbackRate = playbackRate
-                    }
-                  }
-                }}
-            />
+            <VideoPlayer {...videoPlayerProps} />
             {videoSrc && (
                 <VisualIndicator>
                   <DrawingCanvas
@@ -527,11 +425,7 @@ export default function CurbCutPage() {
                 isPlaying={isPlaying}
                 playbackRate={playbackRate}
                 onTogglePlay={togglePlay}
-                onChangePlaybackRate={(rate) => {
-                  if (!videoRef.current) return
-                  videoRef.current.playbackRate = rate
-                  setPlaybackRate(rate)
-                }}
+                onChangePlaybackRate={updatePlaybackRate}
                 isVideoLoaded={!!videoSrc}
                 config={videoToolConfigs.curbCuts}
                 onUndo={handleUndoVehicle}
@@ -643,7 +537,7 @@ export default function CurbCutPage() {
                       isOpen={showReviewSidebar}
                       onClose={() => setShowReviewSidebar(false)}
                       entries={entries}
-                      onSeekToEntry={handleSeekToEntry}
+                      onSeekToEntry={(entry) => seekToEntry(entry.videoIndex, entry.videoTime)}
                       onUpdateEntry={handleUpdateEntry}
                   />
               )}
@@ -668,12 +562,16 @@ export default function CurbCutPage() {
         <VideoEndPrompt
             isOpen={showVideoEndPrompt}
             mode="end"
-            onAddMoreVideos={(files) => handleQueueAddMore(files, () => setIsPlaying(true))}
+            onAddMoreVideos={(files) => {
+              handleAddMoreVideos(files, true)
+              setShowVideoEndPrompt(false) // Added this mapping
+            }}
             onStartNewSection={() => {
               setShowVideoEndPrompt(false)
               handleClearVideo()
               document.getElementById("video-upload-hidden")?.click()
             }}
+            onCancel={() => setShowVideoEndPrompt(false)} // Added this mapping
             onExport={handleExportComplete}
             onReview={() => {
               setShowVideoEndPrompt(false)
@@ -686,18 +584,21 @@ export default function CurbCutPage() {
         <VideoEndPrompt
             isOpen={showExportModal}
             mode="export"
-            onAddMoreVideos={(files) => handleQueueAddMore(files, () => setIsPlaying(true))}
+            onAddMoreVideos={(files) => {
+              handleAddMoreVideos(files, true)
+              setShowExportModal(false) // Added this mapping
+            }}
             onStartNewSection={() => {
               setShowExportModal(false)
               handleClearVideo()
               document.getElementById("video-upload-hidden")?.click()
             }}
+            onCancel={() => setShowExportModal(false)} // Added this mapping
             onExport={handleExportComplete}
             onReview={() => {
               setShowExportModal(false)
               setShowReviewSidebar(true)
             }}
-            onCancel={() => setShowExportModal(false)}
             totalCounts={entries.length}
             videoCount={videoCount}
         />
@@ -706,8 +607,7 @@ export default function CurbCutPage() {
             <VideoRestorePrompt
                 isOpen={showVideoRestorePrompt}
                 onVideoRestore={(f) => {
-                  setVideoSrc(URL.createObjectURL(f))
-                  setPendingVideoRestore(true)
+                  prepareRestore(savedStateForRestore.currentTime, savedStateForRestore.playbackRate, f)
                   setShowVideoRestorePrompt(false)
                 }}
                 onDismiss={() => {
@@ -724,19 +624,6 @@ export default function CurbCutPage() {
                 }}
             />
         )}
-
-        <input
-            type="file"
-            id="video-upload-hidden"
-            multiple
-            accept="video/mp4,video/mov,video/quicktime,video/webm,video/ogg,.mov"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const files = Array.from(e.target.files || [])
-              if (files.length > 0) handleQueueFilesSelect(files)
-              e.target.value = ""
-            }}
-        />
       </div>
   )
 }

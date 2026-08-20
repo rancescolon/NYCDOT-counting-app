@@ -11,6 +11,7 @@ import { videoToolConfigs } from "@/lib/config/video-tool.config"
 import { HelpSidebarConfig } from "@/lib/config/sidebar.config"
 import { IntersectionOverlay, IntersectionPoint } from "./intersection-indicator"
 import { PedestrianControls } from "./pedestrian-controls"
+import { useVideoQueue } from "@/hooks/use-video-queue"
 import * as XLSX from "xlsx-js-style"
 
 const KEY_ACTION_MAPPINGS: Record<string, { label: string; intersectionId: string }> = {
@@ -25,24 +26,37 @@ const KEY_ACTION_MAPPINGS: Record<string, { label: string; intersectionId: strin
 }
 
 export default function PedestrianPage() {
-    const videoRef = useRef<HTMLVideoElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const config = videoToolConfigs.pedestrian
     const sidebarConfig = HelpSidebarConfig.pedestrian
 
-    // Video States
-    const [videoSrc, setVideoSrc] = useState<string | null>(null)
-    const [videoFiles, setVideoFiles] = useState<File[]>([])
-    const [currentFileIndex, setCurrentFileIndex] = useState(0)
-    const [isPlaying, setIsPlaying] = useState(false)
-    const [playbackRate, setPlaybackRate] = useState(1.0)
+    // Use the comprehensive Video Queue hook
+    const {
+        videoRef,
+        sessionFiles,
+        videoSrc,
+        currentVideoIndex,
+        videoCount,
+        isPlaying,
+        playbackRate,
+        recordingStartTime,
+        setRecordingStartTime,
+        togglePlay,
+        updatePlaybackRate,
+        seekBy,
+        handleClearVideo,
+        handleAddMoreVideos,
+        handleFilesSelect: baseHandleFilesSelect,
+        videoPlayerProps
+    } = useVideoQueue({
+        onQueueEnd: () => setShowEndPrompt(true)
+    })
 
     // UI Dialog States
     const [showHelp, setShowHelp] = useState(false)
     const [showEndPrompt, setShowEndPrompt] = useState(false)
     const [showTimePrompt, setShowTimePrompt] = useState(false)
     const [showRestorePrompt, setShowRestorePrompt] = useState(false)
-    const [videoStartTime, setVideoStartTime] = useState<Date | null>(null)
 
     // Intersection Marking States
     const [intersections, setIntersections] = useState<IntersectionPoint[]>([
@@ -56,7 +70,7 @@ export default function PedestrianPage() {
     const [redoingIndex, setRedoingIndex] = useState<number | null>(null)
     const [showFinalConfirmation, setShowFinalConfirmation] = useState(false)
 
-    // Glow Effect State (1 second duration)
+    // Glow Effect State
     const [glowingIntersectionId, setGlowingIntersectionId] = useState<string | null>(null)
     const glowTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -64,30 +78,21 @@ export default function PedestrianPage() {
     const [counts, setCounts] = useState<any[]>([])
     const [redoCounts, setRedoCounts] = useState<any[]>([])
 
-    // Refs to prevent stale closures and StrictMode duplication bugs on undo/redo
     const countsRef = useRef(counts)
-    useEffect(() => {
-        countsRef.current = counts
-    }, [counts])
+    useEffect(() => { countsRef.current = counts }, [counts])
 
     const redoCountsRef = useRef(redoCounts)
-    useEffect(() => {
-        redoCountsRef.current = redoCounts
-    }, [redoCounts])
+    useEffect(() => { redoCountsRef.current = redoCounts }, [redoCounts])
 
-    // Load stored counts from localStorage on initial render
     useEffect(() => {
         try {
             const savedCounts = localStorage.getItem("pedestrian_logged_counts")
-            if (savedCounts) {
-                setCounts(JSON.parse(savedCounts))
-            }
+            if (savedCounts) setCounts(JSON.parse(savedCounts))
         } catch (error) {
             console.error("Failed to load stored counts:", error)
         }
     }, [])
 
-    // Sync counts with localStorage whenever updated
     useEffect(() => {
         try {
             localStorage.setItem("pedestrian_logged_counts", JSON.stringify(counts))
@@ -97,44 +102,19 @@ export default function PedestrianPage() {
     }, [counts])
 
     const triggerGlow = useCallback((intersectionId: string) => {
-        if (glowTimerRef.current) {
-            clearTimeout(glowTimerRef.current)
-        }
-        // Append Date.now() so back-to-back inputs force the animation to restart
+        if (glowTimerRef.current) clearTimeout(glowTimerRef.current)
         setGlowingIntersectionId(`${intersectionId}-${Date.now()}`)
-        glowTimerRef.current = setTimeout(() => {
-            setGlowingIntersectionId(null)
-        }, 1500)
+        glowTimerRef.current = setTimeout(() => setGlowingIntersectionId(null), 1500)
     }, [])
 
-    // File Handlers
+    // Wraps the base handle files to also trigger UI popups specific to this page
     const handleFilesSelect = useCallback((files: File[]) => {
-        setVideoFiles(files)
-        setCurrentFileIndex(0)
-        setVideoSrc(URL.createObjectURL(files[0]))
+        baseHandleFilesSelect(files)
         setShowTimePrompt(true)
         setIsLabeling(true)
         setLabelingStep(0)
-    }, [])
+    }, [baseHandleFilesSelect])
 
-    const handlePlayToggle = useCallback(() => {
-        if (!videoRef.current) return
-        if (isPlaying) {
-            videoRef.current.pause()
-        } else {
-            videoRef.current.play()
-        }
-        setIsPlaying(!isPlaying)
-    }, [isPlaying])
-
-    const handleRateChange = useCallback((rate: number) => {
-        if (videoRef.current) {
-            videoRef.current.playbackRate = rate
-            setPlaybackRate(rate)
-        }
-    }, [])
-
-    // Coordinate Marker Click Handler
     const handleVideoClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!containerRef.current) return
         const rect = containerRef.current.getBoundingClientRect()
@@ -167,7 +147,6 @@ export default function PedestrianPage() {
         setIsLabeling(false)
     }
 
-    // Count Recording Handler
     const handleCount = useCallback(
         (key: string) => {
             if (!videoRef.current || !isPlaying) return
@@ -176,20 +155,16 @@ export default function PedestrianPage() {
             const mappingInfo = KEY_ACTION_MAPPINGS[key]
             const targetIntersectionId = mappingInfo?.intersectionId || intersections[0]?.id
 
-            if (targetIntersectionId) {
-                triggerGlow(targetIntersectionId)
-            }
+            if (targetIntersectionId) triggerGlow(targetIntersectionId)
 
-            const currentFileName = videoFiles[currentFileIndex]?.name || "Unsaved_Video.mp4"
-            const realTimeFormatted = videoStartTime
-                ? new Date(videoStartTime.getTime() + timestamp * 1000).toISOString()
+            const currentFileName = sessionFiles[currentVideoIndex]?.name || "Unsaved_Video.mp4"
+            const realTimeFormatted = recordingStartTime
+                ? new Date(recordingStartTime.getTime() + timestamp * 1000).toISOString()
                 : new Date().toISOString()
-
-            const currentCounts = countsRef.current
 
             const newCount = {
                 id: Date.now().toString(),
-                countNumber: currentCounts.length + 1,
+                countNumber: countsRef.current.length + 1,
                 key,
                 actionLabel: mappingInfo?.label || `Action Key ${key}`,
                 intersection: targetIntersectionId ? targetIntersectionId.toUpperCase() : "GENERAL",
@@ -199,17 +174,15 @@ export default function PedestrianPage() {
                 videoFile: currentFileName,
             }
 
-            setCounts([...currentCounts, newCount])
-            setRedoCounts([]) // Clear redo array on new action
+            setCounts([...countsRef.current, newCount])
+            setRedoCounts([])
         },
-        [isPlaying, videoFiles, currentFileIndex, videoStartTime, intersections, triggerGlow]
+        [isPlaying, sessionFiles, currentVideoIndex, recordingStartTime, intersections, triggerGlow, videoRef]
     )
 
-    // Undo / Redo Handlers
     const handleUndo = useCallback(() => {
         const current = countsRef.current
         if (current.length === 0) return
-
         const last = current[current.length - 1]
         setCounts(current.slice(0, -1))
         setRedoCounts((prev) => [...prev, last])
@@ -218,23 +191,17 @@ export default function PedestrianPage() {
     const handleRedoCount = useCallback(() => {
         const currentRedo = redoCountsRef.current
         if (currentRedo.length === 0) return
-
         const next = currentRedo[currentRedo.length - 1]
         setRedoCounts(currentRedo.slice(0, -1))
         setCounts((prev) => [...prev, next])
 
-        // Trigger the correct intersection glow
         if (next.intersection && next.intersection !== "GENERAL") {
             triggerGlow(next.intersection.toLowerCase())
         }
     }, [triggerGlow])
 
-    // Excel Export Functionality
     const handleExportExcel = useCallback(() => {
-        if (counts.length === 0) {
-            alert("No count data recorded yet to export.")
-            return
-        }
+        if (counts.length === 0) return alert("No count data recorded yet to export.")
 
         const formattedData = counts.map((item, idx) => ({
             "Record #": idx + 1,
@@ -250,28 +217,13 @@ export default function PedestrianPage() {
         const worksheet = XLSX.utils.json_to_sheet(formattedData)
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, "Pedestrian Counts")
-
-        // Auto-fit columns
-        const maxCols = Object.keys(formattedData[0] || {}).map((key) => ({
-            wch: Math.max(key.length, 22),
-        }))
-        worksheet["!cols"] = maxCols
-
-        const fileName = `Pedestrian_Counts_Export_${new Date().toISOString().slice(0, 10)}.xlsx`
-        XLSX.writeFile(workbook, fileName)
+        worksheet["!cols"] = Object.keys(formattedData[0] || {}).map((key) => ({ wch: Math.max(key.length, 22) }))
+        XLSX.writeFile(workbook, `Pedestrian_Counts_Export_${new Date().toISOString().slice(0, 10)}.xlsx`)
     }, [counts])
 
-    // Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Prevent hotkeys from firing if user is typing in an input field
-            if (
-                e.target instanceof HTMLInputElement ||
-                e.target instanceof HTMLTextAreaElement ||
-                (e.target as Element)?.closest("[contenteditable]")
-            ) {
-                return
-            }
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as Element)?.closest("[contenteditable]")) return
 
             const key = e.key.toLowerCase()
 
@@ -280,7 +232,7 @@ export default function PedestrianPage() {
                 handleCount(key)
             } else if (key === " " && videoSrc) {
                 e.preventDefault()
-                handlePlayToggle()
+                togglePlay()
             } else if (key === "z") {
                 e.preventDefault()
                 handleUndo()
@@ -292,40 +244,30 @@ export default function PedestrianPage() {
                 setShowHelp((prev) => !prev)
             } else if (key === "arrowup" && videoSrc) {
                 e.preventDefault()
-                handleRateChange(Math.min(16, playbackRate + 0.25))
+                updatePlaybackRate(playbackRate + 0.25)
             } else if (key === "arrowdown" && videoSrc) {
                 e.preventDefault()
-                handleRateChange(Math.max(0.25, playbackRate - 0.25))
-            } else if (key === "arrowleft" && videoSrc && videoRef.current) {
+                updatePlaybackRate(playbackRate - 0.25)
+            } else if (key === "arrowleft" && videoSrc) {
                 e.preventDefault()
-                videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5)
-            } else if (key === "arrowright" && videoSrc && videoRef.current) {
+                seekBy(-5)
+            } else if (key === "arrowright" && videoSrc) {
                 e.preventDefault()
-                videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 5)
+                seekBy(5)
             }
         }
-
         window.addEventListener("keydown", handleKeyDown)
         return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [handleCount, handlePlayToggle, handleUndo, handleRedoCount, handleRateChange, playbackRate, videoSrc])
+    }, [handleCount, togglePlay, handleUndo, handleRedoCount, updatePlaybackRate, seekBy, playbackRate, videoSrc])
 
     return (
         <div className="flex pt-16 px-4 pb-4 h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-900">
             <div className="flex-1 flex flex-col gap-2 h-full overflow-hidden transition-all duration-300">
-                <div
-                    ref={containerRef}
-                    className="relative flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center shadow-xl border border-slate-200 dark:border-slate-800"
-                >
+                <div ref={containerRef} className="relative flex-1 bg-black rounded-lg overflow-hidden flex items-center justify-center shadow-xl border border-slate-200 dark:border-slate-800">
                     <VideoPlayer
-                        ref={videoRef}
-                        videoSrc={videoSrc}
+                        {...videoPlayerProps}
                         onFilesSelect={handleFilesSelect}
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        onTimeUpdate={() => {}}
-                        onLoadedMetadata={() => {}}
                     />
-
                     {videoSrc && (
                         <IntersectionOverlay
                             intersections={intersections}
@@ -346,8 +288,8 @@ export default function PedestrianPage() {
                         videoRef={videoRef}
                         isPlaying={isPlaying}
                         playbackRate={playbackRate}
-                        onTogglePlay={handlePlayToggle}
-                        onChangePlaybackRate={handleRateChange}
+                        onTogglePlay={togglePlay}
+                        onChangePlaybackRate={updatePlaybackRate}
                         isVideoLoaded={!!videoSrc}
                         config={config}
                         onUndo={handleUndo}
@@ -355,10 +297,7 @@ export default function PedestrianPage() {
                         onShowHelp={() => setShowHelp(true)}
                         controlsAlignment="left"
                     >
-                        <PedestrianControls
-                            counts={counts}
-                            onExport={handleExportExcel}
-                        />
+                        <PedestrianControls counts={counts} onExport={handleExportExcel} />
                     </VideoControls>
                 </div>
             </div>
@@ -379,24 +318,28 @@ export default function PedestrianPage() {
 
             <VideoEndPrompt
                 isOpen={showEndPrompt}
-                onAddMoreVideos={handleFilesSelect}
+                onAddMoreVideos={(files) => {
+                    handleAddMoreVideos(files, true)
+                    setShowEndPrompt(false) // Added this mapping
+                }}
                 onStartNewSection={() => {
-                    setVideoSrc(null)
+                    handleClearVideo()
                     setCounts([])
                     setRedoCounts([])
                     localStorage.removeItem("pedestrian_logged_counts")
                     setShowEndPrompt(false)
                 }}
+                onCancel={() => setShowEndPrompt(false)} // Added this mapping
                 onExport={handleExportExcel}
                 onReview={() => setShowEndPrompt(false)}
                 totalCounts={counts.length}
-                videoCount={videoFiles.length}
+                videoCount={videoCount}
             />
 
             <VideoTimeInputDialog
                 isOpen={showTimePrompt}
                 onConfirm={(date) => {
-                    setVideoStartTime(date)
+                    setRecordingStartTime(date)
                     setShowTimePrompt(false)
                 }}
                 onSkip={() => setShowTimePrompt(false)}
