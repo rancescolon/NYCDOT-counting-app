@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { SpeedStudyFormState } from '@/lib/types/types';
 import Image from "next/image";
 import { TEAM_RULES, isTimeAllowed, isDayAllowed } from '@/lib/config/speed-study.config';
+import { getAssetPath } from '@/lib/utils'; // Adjust import path to match your folder structure
 
 interface Props {
     data: SpeedStudyFormState;
@@ -47,7 +48,7 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                         <div className="relative w-10 h-10 flex-shrink-0 mt-0.5">
                             <Image
-                                src="/caution-icon.png"
+                                src={getAssetPath('/caution-icon.png')}
                                 alt="Caution"
                                 fill
                                 className="object-contain"

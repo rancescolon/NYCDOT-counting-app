@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SpeedStudyFormState, TransportMode, SpeedRecord } from '@/lib/types/types';
 import ExcelJS from 'exceljs';
 import { CustomDropdown } from '@/components/ui/CustomDropdown';
-
+import { getAssetPath } from '@/lib/utils';
+import { flushSync } from 'react-dom';
 interface Props {
     studyData: SpeedStudyFormState;
     onEndStudy: (records: SpeedRecord[]) => void;
@@ -37,14 +38,6 @@ export const BikeLanesActiveStudyView: React.FC<Props> = ({ studyData, onEndStud
 
     const speedInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        if (selectedMode) {
-            const timer = setTimeout(() => {
-                speedInputRef.current?.focus();
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [selectedMode]);
 
     useEffect(() => {
         if (recordedLogs.length === 0) return;
@@ -292,44 +285,6 @@ export const BikeLanesActiveStudyView: React.FC<Props> = ({ studyData, onEndStud
                     </div>
                 </div>
 
-
-                {/* 3x3 Grid Transport Mode Selection */}
-                <div className="bg-white rounded-xl border border-gray-200 p-3 shadow-sm">
-                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
-                        Transport Mode
-                    </span>
-                    <div className="grid grid-cols-3 gap-2">
-                        {TRANSPORT_MODES.map((mode) => {
-                            const isSelected = selectedMode === mode;
-                            return (
-                                <button
-                                    key={mode}
-                                    type="button"
-                                    onClick={() => setSelectedMode(mode)}
-                                    className={`py-3 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center text-center ${
-                                        isSelected
-                                            ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-600 scale-[1.02]'
-                                            : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
-                                    }`}
-                                >
-                                    {/* Image container */}
-                                    <div className="w-full h-16 mb-1 flex items-center justify-center overflow-hidden bg-transparent">
-                                        <img
-                                            src={`./transport/${mode.toLowerCase().replace(/ /g, '-')}.png`}
-                                            alt={mode}
-                                            className={`w-full h-full object-contain ${
-                                                mode === 'E-CitiBike' ? 'scale-125' : 'scale-110'
-                                            }`}
-                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                        />
-                                    </div>
-                                    {mode}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
                 {/* Speed Entry Prompt */}
                 {selectedMode && (
                     <form
@@ -370,6 +325,49 @@ export const BikeLanesActiveStudyView: React.FC<Props> = ({ studyData, onEndStud
                         </div>
                     </form>
                 )}
+
+
+                {/* 3x3 Grid Transport Mode Selection */}
+                <div className="bg-white rounded-xl border border-gray-200 p-3 shadow-sm">
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                        Transport Mode
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                        {TRANSPORT_MODES.map((mode) => {
+                            const isSelected = selectedMode === mode;
+                            return (
+                                <button
+                                    key={mode}
+                                    type="button"
+                                    onClick={() => {
+                                        flushSync(() => {
+                                            setSelectedMode(mode);
+                                        });
+                                        speedInputRef.current?.focus();
+                                    }}
+                                    className={`py-3 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center text-center ${
+                                        isSelected
+                                            ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-600 scale-[1.02]'
+                                            : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    {/* Image container */}
+                                    <div className="w-full h-16 mb-1 flex items-center justify-center overflow-hidden bg-transparent">
+                                        <img
+                                            src={getAssetPath(`/transport/${mode.toLowerCase().replace(/ /g, '-')}.png`)}
+                                            alt={mode}
+                                            className={`w-full h-full object-contain ${
+                                                mode === 'E-CitiBike' ? 'scale-125' : 'scale-110'
+                                            }`}
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                    </div>
+                                    {mode}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
             {/* Edit Modal */}
@@ -412,12 +410,12 @@ export const BikeLanesActiveStudyView: React.FC<Props> = ({ studyData, onEndStud
                         </div>
 
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
-                            <span className="text-xs font-bold text-gray-700">Delivery Worker?</span>
+                            <span className="text-base font-bold text-gray-700">Delivery Worker?</span>
                             <button
                                 type="button"
                                 onClick={() => setEditIsDelivery(!editIsDelivery)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                                    editIsDelivery ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-600'
+                                className={`px-3 py-1.5 rounded-lg text-s font-bold ${
+                                    editIsDelivery ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
                                 }`}
                             >
                                 {editIsDelivery ? 'YES' : 'NO'}
