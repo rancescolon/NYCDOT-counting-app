@@ -1,5 +1,3 @@
-// app/speed-study/page.tsx
-
 'use client'
 
 import React, { useState } from 'react';
@@ -13,7 +11,8 @@ import { Notes } from '@/components/speedStudy/Notes';
 import { ReminderCard } from '@/components/speedStudy/ReminderCard';
 import { StickyFooter } from '@/components/speedStudy/StickyFooter';
 import { ActiveStudyView } from '@/components/speedStudy/ActiveStudyView';
-import { TEAMS, OBSERVERS_BY_TEAM } from '@/lib/config/speed-study.config';
+import { BikeLanesActiveStudyView } from '@/components/speedStudy/BikeLanesActiveStudyView';
+import { TEAMS, OBSERVERS_BY_TEAM, TEAM_RULES } from '@/lib/config/speed-study.config';
 
 export default function SpeedStudyPage() {
     const [isStudyActive, setIsStudyActive] = useState(false);
@@ -49,7 +48,20 @@ export default function SpeedStudyPage() {
         setFormState((prev) => ({ ...prev, ...updates }));
     };
 
+    const currentTeamRule = TEAM_RULES[formState.team];
+    const cardConfig = currentTeamRule?.cards || {};
+
+    // Route active view layout based on team config
     if (isStudyActive) {
+        if (currentTeamRule?.activePage === 'bike_lanes') {
+            return (
+                <BikeLanesActiveStudyView
+                    studyData={formState}
+                    onEndStudy={() => setIsStudyActive(false)}
+                />
+            );
+        }
+
         return (
             <ActiveStudyView
                 studyData={formState}
@@ -58,7 +70,6 @@ export default function SpeedStudyPage() {
         );
     }
 
-    // Form is disabled if time/weather are invalid OR if required street fields are empty
     const isFormDisabled =
         !isTimeAndDayValid ||
         !isWeatherValid ||
@@ -68,7 +79,6 @@ export default function SpeedStudyPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 pb-12">
-            {/* Top Header */}
             <header className="bg-white border-b border-gray-200 sticky top-0 z-40 px-4 py-3.5 shadow-sm">
                 <div className="max-w-md mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -77,23 +87,41 @@ export default function SpeedStudyPage() {
                 </div>
             </header>
 
-            {/* Form Body */}
+            {/* StudyInfo is rendered FIRST to drive configuration across downstream cards */}
             <main className="max-w-md mx-auto p-4">
-                <StreetInfo data={formState} onChange={handleUpdate} />
                 <StudyInfo data={formState} onChange={handleUpdate} />
-                <RoadInfo data={formState} onChange={handleUpdate} />
-                <WeatherInfo
-                    data={formState}
-                    onChange={handleUpdate}
-                    onValidationChange={setIsWeatherValid}
-                />
-                <TimingInfo
-                    data={formState}
-                    onChange={handleUpdate}
-                    onValidationChange={setIsTimeAndDayValid}
-                />
-                <Notes data={formState} onChange={handleUpdate} />
-                <ReminderCard />
+
+                {(cardConfig.streetInfo ?? true) && (
+                    <StreetInfo data={formState} onChange={handleUpdate} />
+                )}
+
+                {(cardConfig.roadInfo ?? true) && (
+                    <RoadInfo data={formState} onChange={handleUpdate} />
+                )}
+
+                {(cardConfig.weatherInfo ?? true) && (
+                    <WeatherInfo
+                        data={formState}
+                        onChange={handleUpdate}
+                        onValidationChange={setIsWeatherValid}
+                    />
+                )}
+
+                {(cardConfig.timingInfo ?? true) && (
+                    <TimingInfo
+                        data={formState}
+                        onChange={handleUpdate}
+                        onValidationChange={setIsTimeAndDayValid}
+                    />
+                )}
+
+                {(cardConfig.notes ?? true) && (
+                    <Notes data={formState} onChange={handleUpdate} />
+                )}
+
+                {(cardConfig.reminderCard ?? true) && (
+                    <ReminderCard />
+                )}
             </main>
 
             <StickyFooter

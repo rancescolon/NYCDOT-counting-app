@@ -1,5 +1,3 @@
-//TODO make length of time for the study configurable
-
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export const DAY_NAMES: Record<DayOfWeek, string> = {
     0: 'Sunday',
@@ -22,99 +20,89 @@ export type WeatherMode = 'allowed_only' | 'forbidden' | 'any';
 
 export interface WeatherRestriction {
     mode: WeatherMode;
-    weatherTypes: string[]; // Options: 'Sunny', 'Cloudy', 'Rainy', 'Heavy Rain', 'Snowing'
+    weatherTypes: string[];
     description: string;
 }
 
+export interface CardVisibilityConfig {
+    streetInfo?: boolean;
+    roadInfo?: boolean;
+    weatherInfo?: boolean;
+    timingInfo?: boolean;
+    notes?: boolean;
+    reminderCard?: boolean;
+}
+
 export interface TeamRuleConfig {
-    timeWindow?: TimeWindow;
+    timeWindows?: TimeWindow[];
     timeDescription?: string;
     allowedDays?: DayOfWeek[];
     daysDescription?: string;
     weatherRestriction?: WeatherRestriction;
+
+    // Configurable Form Fields
+    showSpeedLimit?: boolean;
+    showStreetType?: boolean;
+    showDirection?: boolean;
+
+    // Card Visibility Configuration
+    cards?: CardVisibilityConfig;
+
+    // Active View Layout Route Target
+    activePage?: 'default' | 'bike_lanes';
 }
 
-
 export const OBSERVERS_BY_TEAM: Record<string, string[]> = {
-    'School Safety': ['R. Colon', 'F. Castro','N. Carey', 'R. Gomez', 'K. Graham','E. Lunyova', 'N. Adler', 'I. Smith', 'M. Ussery', 'A. Archer', 'M. Oliver', 'T. Wilkins'], // Nick/Elena team
-    // 'Vision Zero': ['J. Smith'],
-    'Research': ['J. Adams', 'V. Berliner', 'T. Dorsett', 'A. Rashidov', 'D. Willoughby','F. Adman' ], //John Adams Team
-    // 'Engineering': ['E. Davis', 'K. Wilson'],
+    'School Safety': ['R. Colon', 'F. Castro', 'N. Carey', 'R. Gomez', 'K. Graham', 'E. Lunyova', 'N. Adler', 'I. Smith', 'M. Ussery', 'A. Archer', 'M. Oliver', 'T. Wilkins'],
+    'Research': ['J. Adams', 'V. Berliner', 'T. Dorsett', 'A. Rashidov', 'D. Willoughby', 'F. Adman'],
+    'Vision Zero': ['J. Smith', 'A. Lopez'],
+    'Engineering': ['E. Davis', 'K. Wilson'],
+    'Micromobility': ['R. Leighton', 'R. Viola'],
 };
 
 export const TEAMS = Object.keys(OBSERVERS_BY_TEAM);
 
-
 export const TEAM_RULES: Record<string, TeamRuleConfig> = {
-    
-    // Key: Team identifier (matches Team type: 'School Safety' | 'Vision Zero' | 'Research' | 'Engineering')
     'School Safety': {
-
-        /**
-         * TIME WINDOW RESTRICTIONS
-         * Defines the allowed daily operating hours for conducting a study.
-         */
-        timeWindow: {
-            // Start time in 24-hour format
-            startHour: 10,
-
-            // Start minute (0 - 59)
-            startMinute: 0,
-
-            // End time in 24-hour format
-            endHour: 14,
-
-            // End minute (0 - 59)
-            endMinute: 0,
-        },
-
-        /**
-         * Explanation of the time restriction.
-         * Displayed on UI warning banners/tooltips when the study is scheduled outside the allowed window.
-         */
+        timeWindows: [
+            { startHour: 10, startMinute: 0, endHour: 14, endMinute: 0 }
+        ],
         timeDescription: 'School Safety study hours are 10:00 AM – 2:00 PM.',
-
-        /**
-         * ALLOWED DAYS OF THE WEEK
-         * Array of day indexes based on JavaScript's Date.getDay() format
-         */
         allowedDays: [1, 2, 3, 4, 5],
-
-        /**
-         * Explanation of the permitted days.
-         * Displayed when the selected date falls on a restricted day (e.g., weekend).
-         */
         daysDescription: 'School Safety studies are only permitted Monday through Friday.',
-
-        /**
-         * WEATHER RESTRICTIONS
-         * Defines rules regarding acceptable weather conditions for data collection.
-         */
+        showSpeedLimit: true,
+        showStreetType: true,
+        showDirection: true,
+        cards: {
+            streetInfo: true,
+            roadInfo: true,
+            weatherInfo: true,
+            timingInfo: true,
+            notes: true,
+            reminderCard: true,
+        },
+        activePage: 'default',
         weatherRestriction: {
-            /**
-             * Evaluation mode:
-             * - 'forbidden': The conditions listed in `weatherTypes` are DISALLOWED. (All other weather is valid)
-             * - 'allowed': ONLY the conditions listed in `weatherTypes` are PERMITTED. (All unlisted weather is invalid)
-             * - 'any' : Disables weather validation completely (allows all weather types).
-             */
             mode: 'forbidden',
-
-            /**
-             * List of weather condition labels to evaluate against.
-             * Values must match the `WeatherCondition` type:
-             * 'Sunny' | 'Cloudy' | 'Rainy' | 'Heavy Rain' | 'Snowing'
-             */
             weatherTypes: ['Heavy Rain', 'Snowing'],
-
-            /**
-             * User-facing error message displayed when the chosen weather violates the restriction rule.
-             */
             description: 'Speed studies cannot be performed during Heavy Rain or Snow.',
         },
     },
-    
-    'Research': { // fill out for johns team
-        allowedDays: [0, 1, 2, 3, 4, 5, 6], // Allowed any day
+
+    'Research': {
+        allowedDays: [0, 1, 2, 3, 4, 5, 6],
+        showSpeedLimit: true,
+        showStreetType: true,
+        showDirection: true,
+        cards: {
+            streetInfo: true,
+            roadInfo: true,
+            weatherInfo: true,
+            timingInfo: true,
+            notes: true,
+            reminderCard: true,
+        },
+        activePage: 'default',
         weatherRestriction: {
             mode: 'any',
             weatherTypes: [],
@@ -123,42 +111,100 @@ export const TEAM_RULES: Record<string, TeamRuleConfig> = {
     },
 
     'Vision Zero': {
+        timeWindows: [
+            { startHour: 7, startMinute: 30, endHour: 9, endMinute: 30 },
+            { startHour: 16, startMinute: 0, endHour: 18, endMinute: 0 }
+        ],
+        timeDescription: 'Vision Zero studies are allowed 7:30 AM – 9:30 AM and 4:00 PM – 6:00 PM.',
         allowedDays: [1, 2, 3, 4, 5],
-        daysDescription: 'Research studies are conducted Monday through Friday.',
-
+        daysDescription: 'Vision Zero studies are conducted Monday through Friday.',
+        showSpeedLimit: true,
+        showStreetType: false,
+        showDirection: true,
+        cards: {
+            streetInfo: true,
+            roadInfo: true,
+            weatherInfo: true,
+            timingInfo: true,
+            notes: true,
+            reminderCard: true,
+        },
+        activePage: 'default',
         weatherRestriction: {
             mode: 'allowed_only',
             weatherTypes: ['Rainy', 'Heavy Rain'],
             description: 'This research study requires wet weather conditions (Rainy or Heavy Rain only).',
         },
     },
+
     'Engineering': {
         allowedDays: [1, 2, 3, 4, 5],
         daysDescription: 'Engineering studies are conducted Monday through Friday.',
+        showSpeedLimit: true,
+        showStreetType: true,
+        showDirection: true,
+        cards: {
+            streetInfo: true,
+            roadInfo: true,
+            weatherInfo: true,
+            timingInfo: true,
+            notes: true,
+            reminderCard: true,
+        },
+        activePage: 'default',
         weatherRestriction: {
             mode: 'forbidden',
             weatherTypes: ['Heavy Rain', 'Snowing'],
             description: 'Engineering speed studies cannot be performed during Heavy Rain or Snow.',
         },
     },
+
+    'Micromobility': {
+        timeWindows: [
+            { startHour: 12, startMinute: 0, endHour: 16, endMinute: 45 },
+            { startHour: 17, startMinute: 0, endHour: 18, endMinute: 45 }
+        ],
+        timeDescription: 'Micromobility studies are only allowed from Noon - 1 PM and 5:00 PM - 6 PM.',
+        allowedDays: [1, 2, 3, 4, 5],
+        daysDescription: 'Studies are conducted Monday through Friday.',
+        showSpeedLimit: false,
+        showStreetType: false,
+        showDirection: true,
+        cards: {
+            streetInfo: true,
+            roadInfo: false,
+            weatherInfo: true,
+            timingInfo: true,
+            notes: true,
+            reminderCard: false,
+        },
+        activePage: 'bike_lanes',
+        weatherRestriction: {
+            mode: 'allowed_only',
+            weatherTypes: ['Sunny', 'Cloudy'],
+            description: 'This study can only be done when it is Sunny or Cloudy.',
+        },
+    },
 };
 
 /**
- * Validates if the current time fits the team's allowed hours
+ * Validates if current time fits into ANY of the team's allowed disjoint time windows
  */
 export function isTimeAllowed(team: string, date: Date = new Date()): boolean {
     const rule = TEAM_RULES[team];
-    if (!rule || !rule.timeWindow) return true;
+    if (!rule || !rule.timeWindows || rule.timeWindows.length === 0) return true;
 
     const currentMinutes = date.getHours() * 60 + date.getMinutes();
-    const startMinutes = rule.timeWindow.startHour * 60 + rule.timeWindow.startMinute;
-    const endMinutes = rule.timeWindow.endHour * 60 + rule.timeWindow.endMinute;
 
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    return rule.timeWindows.some((window) => {
+        const startMinutes = window.startHour * 60 + window.startMinute;
+        const endMinutes = window.endHour * 60 + window.endMinute;
+        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    });
 }
 
 /**
- * Validates if the current day of the week is allowed for the team
+ * Validates if current day of week is allowed for team
  */
 export function isDayAllowed(team: string, date: Date = new Date()): boolean {
     const rule = TEAM_RULES[team];
@@ -169,7 +215,7 @@ export function isDayAllowed(team: string, date: Date = new Date()): boolean {
 }
 
 /**
- * Validates weather restrictions (supports both required and forbidden modes)
+ * Validates weather restrictions
  */
 export function isWeatherAllowed(team: string, selectedWeather: string): boolean {
     const rule = TEAM_RULES[team];

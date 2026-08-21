@@ -1,5 +1,3 @@
-// components/speed-study/TimingInfo.tsx
-
 import React, { useEffect } from 'react';
 import { SpeedStudyFormState } from '@/lib/types/types';
 import Image from "next/image";
@@ -49,7 +47,7 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                         <div className="relative w-10 h-10 flex-shrink-0 mt-0.5">
                             <Image
-                                src="/caution.png"
+                                src="/caution-icon.png"
                                 alt="Caution"
                                 fill
                                 className="object-contain"
@@ -62,7 +60,7 @@ export const TimingInfo: React.FC<Props> = ({ data, onChange, onValidationChange
                     </div>
                 )}
 
-                {/* Caution for disallowed day of the week */}
+                {/* Caution for disallowed day of week */}
                 {!isDayValid && rule?.daysDescription && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                         <div className="relative w-10 h-10 flex-shrink-0 mt-0.5">

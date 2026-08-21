@@ -3,6 +3,17 @@
 export type VehicleCategory = 'cut_through' | 'parking' | 'driving'
 export type VehicleType = 'Car' | 'Moto' | 'Ebike' | 'Truck'
 
+export type TransportMode =
+    | 'CitiBike'
+    | 'E-CitiBike'
+    | 'Bike'
+    | 'E-Bike'
+    | 'Cargo Bike'
+    | 'Scooter'
+    | 'Moped'
+    | 'Motorcycle'
+    | 'Other';
+
 export interface CountEntry {
     id: string
     timestamp: string
@@ -13,6 +24,7 @@ export interface CountEntry {
     note?: string
     key?: string
 }
+
 
 export interface Point {
     x: number
@@ -73,4 +85,12 @@ export interface SpeedStudyFormState {
     isRaining: boolean;
     startTimeSlot: string;
     notes: string;
+}
+
+export interface SpeedRecord {
+    id: string;
+    speed: number;
+    timestamp: string;
+    transportMode?: TransportMode;
+    isDeliveryWorker?: boolean;
 }
