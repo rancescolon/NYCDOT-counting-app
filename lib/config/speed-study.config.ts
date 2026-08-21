@@ -161,7 +161,7 @@ export const TEAM_RULES: Record<string, TeamRuleConfig> = {
 
     'Micromobility': {
         timeWindows: [
-            { startHour: 12, startMinute: 0, endHour: 16, endMinute: 45 },
+            { startHour: 12, startMinute: 0, endHour: 13, endMinute: 45 },
             { startHour: 17, startMinute: 0, endHour: 18, endMinute: 45 }
         ],
         timeDescription: 'Micromobility studies are only allowed from Noon - 1 PM and 5:00 PM - 6 PM.',
